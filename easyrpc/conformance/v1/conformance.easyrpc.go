@@ -10,10 +10,10 @@ import (
 
 func ConformanceService_Methods() []easyrpc.MethodSpec {
 	return []easyrpc.MethodSpec{
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/easyrpc.conformance.v1.ConformanceService/Health", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/easyrpc.conformance.v1.ConformanceService/Echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/easyrpc.conformance.v1.ConformanceService/Count", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/easyrpc.conformance.v1.ConformanceService/Fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/v1/health", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/v1/echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/v1/count", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/v1/fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
 	}
 }
 
@@ -21,7 +21,7 @@ type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
 func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Health", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
 	out := &HealthResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
@@ -29,7 +29,7 @@ func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest
 }
 
 func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Echo", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
 	out := &EchoResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
@@ -37,11 +37,11 @@ func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*
 }
 
 func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Count", Method: "POST", Body: protoBytes(in)})
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)})
 }
 
 func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Fail", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
 	out := &FailResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
