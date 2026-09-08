@@ -3,14 +3,101 @@ package conformancev1
 
 import (
 	easyrpc "github.com/easy-utils/easy-rpc-go"
+	"context"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// MethodSpecs for ConformanceService
 func ConformanceService_Methods() []easyrpc.MethodSpec {
 	return []easyrpc.MethodSpec{
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/v1/health", HTTPMethod: "GET", ClientStream: false, ServerStream: false, Body: ""},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/v1/echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false, Body: "*"},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/v1/count", HTTPMethod: "POST", ClientStream: false, ServerStream: true, Body: "*"},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/v1/fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false, Body: "*"},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/easyrpc.conformance.v1.ConformanceService/Health", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/easyrpc.conformance.v1.ConformanceService/Echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/easyrpc.conformance.v1.ConformanceService/Count", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/easyrpc.conformance.v1.ConformanceService/Fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
 	}
 }
+
+type ConformanceServiceClient struct { rt easyrpc.Transport }
+func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
+
+func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Health", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	out := &HealthResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Echo", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	out := &EchoResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Count", Method: "POST", Body: protoBytes(in)})
+}
+
+func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Fail", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	out := &FailResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+type ConformanceServiceService interface {
+	Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error)
+	Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error)
+	Count(ctx context.Context, in *CountRequest, emit func(*CountResponse) error) error
+	Fail(ctx context.Context, in *FailRequest) (*FailResponse, error)
+}
+
+func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.ServiceRegistry {
+	reg := easyrpc.NewServiceRegistry()
+	reg.Unary["Health"] = func(req []byte, kind string) ([]byte, error) {
+		in := &HealthRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.Health(context.Background(), in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
+	reg.Unary["Echo"] = func(req []byte, kind string) ([]byte, error) {
+		in := &EchoRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.Echo(context.Background(), in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
+	reg.Stream["Count"] = func(req []byte, kind string, emit func([]byte, bool) error) error {
+		in := &CountRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return err }
+		return impl.Count(context.Background(), in, func(out *CountResponse) error { return emit(codecBytes(out, kind), false) })
+	}
+	reg.Unary["Fail"] = func(req []byte, kind string) ([]byte, error) {
+		in := &FailRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.Fail(context.Background(), in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
+	return reg
+}
+
+func protoBytes(m proto.Message) []byte {
+	b, _ := proto.Marshal(m)
+	return b
+}
+
+func decodeIn(req []byte, kind string, m proto.Message) error {
+	if kind == "json" { return protojson.Unmarshal(req, m) }
+	return proto.Unmarshal(req, m)
+}
+
+func codecBytes(m proto.Message, kind string) []byte {
+	if kind == "json" { b, _ := protojson.Marshal(m); return b }
+	b, _ := proto.Marshal(m); return b
+}
+

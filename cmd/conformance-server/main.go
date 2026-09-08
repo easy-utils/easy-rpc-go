@@ -1,54 +1,36 @@
 package main
 
 import (
-	"io"
+	"context"
 	"net/http"
 
 	easyrpc "github.com/easy-utils/easy-rpc-go"
 	cv1 "github.com/easy-utils/easy-rpc-go/easyrpc/conformance/v1"
-
-	"google.golang.org/protobuf/proto"
 )
 
-// Both REST (google.api.http) and gRPC-style paths are served so any client
-// (TS generated with either path style) can interoperate.
-func main() {
-	mux := http.NewServeMux()
+type impl struct{}
 
-	unaryEcho := func(w http.ResponseWriter, r *http.Request) {
-		req, _ := io.ReadAll(r.Body)
-		var in cv1.EchoRequest
-		_ = proto.Unmarshal(req, &in)
-		w.Header().Set("Content-Type", "application/proto")
-		out := &cv1.EchoResponse{Output: "echo:" + in.Input}
-		b, _ := proto.Marshal(out)
-		_, _ = w.Write(b)
-	}
-	streamCount := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/connect+proto")
-		sw := easyrpc.NewStreamWriter(w)
-		for i := 0; i < 3; i++ {
-			out := &cv1.CountResponse{Index: int32(i)}
-			b, _ := proto.Marshal(out)
-			_ = sw.Write(b)
+func (impl) Health(ctx context.Context, _ *cv1.HealthRequest) (*cv1.HealthResponse, error) {
+	return &cv1.HealthResponse{Ok: true, Name: "conformance"}, nil
+}
+func (impl) Echo(ctx context.Context, in *cv1.EchoRequest) (*cv1.EchoResponse, error) {
+	return &cv1.EchoResponse{Output: "echo:" + in.Input}, nil
+}
+func (impl) Count(ctx context.Context, in *cv1.CountRequest, emit func(*cv1.CountResponse) error) error {
+	for i := 0; i < 3; i++ {
+		if err := emit(&cv1.CountResponse{Index: int32(i)}); err != nil {
+			return err
 		}
-		_ = sw.End(0, "")
 	}
-	health := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/proto")
-		b, _ := proto.Marshal(&cv1.HealthResponse{Ok: true, Name: "conformance"})
-		_, _ = w.Write(b)
-	}
+	return nil
+}
+func (impl) Fail(ctx context.Context, in *cv1.FailRequest) (*cv1.FailResponse, error) {
+	return &cv1.FailResponse{Ok: in.Message == ""}, nil
+}
 
-	// REST paths
-	mux.HandleFunc("/v1/health", health)
-	mux.HandleFunc("/v1/echo", unaryEcho)
-	mux.HandleFunc("/v1/count", streamCount)
-	// gRPC-style paths (fallback)
-	base := "/easyrpc.conformance.v1.ConformanceService/"
-	mux.HandleFunc(base+"Health", health)
-	mux.HandleFunc(base+"Echo", unaryEcho)
-	mux.HandleFunc(base+"Count", streamCount)
-
-	_ = http.ListenAndServe("127.0.0.1:18888", mux)
+func main() {
+	methods := cv1.ConformanceService_Methods()
+	reg := cv1.RegisterConformanceServiceService(impl{})
+	_ = easyrpc.Serve(methods, reg)
+	_ = http.ListenAndServe("127.0.0.1:18888", easyrpc.Serve(methods, reg))
 }

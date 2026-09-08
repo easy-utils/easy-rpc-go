@@ -1,46 +1,149 @@
 package easyrpc
 
 import (
-	"bytes"
-	"context"
-	"encoding/binary"
+	"encoding/base64"
 	"io"
+	"net/http"
+	"strings"
 )
 
-// ServerStreamReader reads a server-stream response from the wire. Useful for
-// server-side handlers that want to serve a stream of messages.
-type ServerStreamReader struct {
-	r   io.Reader
-	end bool
+// UnaryHandler decodes request bytes -> response bytes. kind is "proto"|"json".
+type UnaryHandler func(req []byte, kind string) (resp []byte, err error)
+
+// StreamHandler serves server-stream; emit(payload,true) ends.
+type StreamHandler func(req []byte, kind string, emit func(payload []byte, end bool) error) error
+
+// ServiceRegistry maps method name -> handler.
+type ServiceRegistry struct {
+	Unary  map[string]UnaryHandler
+	Stream map[string]StreamHandler
 }
 
-// NewServerStreamReader wraps r to read framed responses.
-func NewServerStreamReader(r io.Reader) *ServerStreamReader {
-	return &ServerStreamReader{r: r}
+// NewServiceRegistry returns an empty registry.
+func NewServiceRegistry() *ServiceRegistry {
+	return &ServiceRegistry{Unary: map[string]UnaryHandler{}, Stream: map[string]StreamHandler{}}
 }
 
-// Next returns the next message payload (de-framed); io.EOF at end.
-func (s *ServerStreamReader) Next() ([]byte, error) {
-	if s.end {
-		return nil, io.EOF
+// contentKind picks "proto" or "json" from the Content-Type/Accept header,
+// defaulting to proto.
+func contentKind(r *http.Request) string {
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "application/json") {
+		return "json"
 	}
-	payload, end, err := ReadFrame(s.r)
-	if err != nil {
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return nil, io.EOF
+	accept := r.Header.Get("Accept")
+	if strings.HasPrefix(accept, "application/json") {
+		return "json"
+	}
+	return "proto"
+}
+
+// Serve builds an http.Handler dispatching by method specs to a service
+// registry, honoring REST paths and the proto/json content negotiation.
+func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
+	mux := http.NewServeMux()
+	for _, m := range methods {
+		path := m.Path
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
 		}
-		return nil, err
+		spec := m
+		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			kind := contentKind(r)
+			ct := "application/proto"
+			if kind == "json" {
+				ct = "application/json"
+			}
+			if spec.ServerStream {
+				h := reg.Stream[spec.Name]
+				if h == nil {
+					writeError(w, &RPCError{Code: 5, Message: "method not found"})
+					return
+				}
+				w.Header().Set("Content-Type", streamContent(ct))
+				sw := NewStreamWriter(w)
+				err := h(body, kind, func(p []byte, end bool) error {
+					if end {
+						return sw.End(0, "")
+					}
+					return sw.Write(p)
+				})
+				if err != nil {
+					_ = sw.End(13, err.Error())
+					return
+				}
+				_ = sw.End(0, "")
+				return
+			}
+			h := reg.Unary[spec.Name]
+			if h == nil {
+				writeError(w, &RPCError{Code: 5, Message: "method not found"})
+				return
+			}
+			resp, err := h(body, kind)
+			if err != nil {
+				writeError(w, asRPCError(err))
+				return
+			}
+			w.Header().Set("Content-Type", ct)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(resp)
+		})
 	}
-	if end {
-		// EndStreamMessage carries error/trailers; decode best-effort.
-		es := DecodeEndStream(payload)
-		if es.Code != 0 {
-			return nil, &RPCError{Code: es.Code, Message: es.Message}
-		}
-		s.end = true
-		return nil, io.EOF
+	return mux
+}
+
+func streamContent(ct string) string {
+	if ct == "application/json" {
+		return "application/connect+json"
 	}
-	return payload, nil
+	return "application/connect+proto"
+}
+
+func writeError(w http.ResponseWriter, err *RPCError) {
+	code := HTTPStatus(err.Code)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("connect-code", itoa(err.Code))
+	w.Header().Set("connect-error", encodeErr(err.Message))
+	w.WriteHeader(code)
+	_, _ = w.Write([]byte(err.Message))
+}
+
+func encodeErr(msg string) string {
+	return base64.StdEncoding.EncodeToString([]byte(msg))
+}
+
+func asRPCError(err error) *RPCError {
+	if err == nil {
+		return nil
+	}
+	if re, ok := err.(*RPCError); ok {
+		return re
+	}
+	return &RPCError{Code: 13, Message: err.Error()}
+}
+
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	neg := i < 0
+	if neg {
+		i = -i
+	}
+	var b [20]byte
+	pos := len(b)
+	for i > 0 {
+		pos--
+		b[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	if neg {
+		pos--
+		b[pos] = '-'
+	}
+	return string(b[pos:])
 }
 
 // StreamWriter writes framed responses for a server-stream handler.
@@ -75,54 +178,4 @@ func (s *StreamWriter) End(code int, message string) error {
 	_, err := s.w.Write(Frame(payload, true))
 	s.end = true
 	return err
-}
-
-// ---- unary helpers for server handlers ----
-
-// DecodeRequest reads a unary request body into bytes.
-func DecodeRequest(r io.Reader) ([]byte, error) { return io.ReadAll(r) }
-
-// EncodeResponse returns a unary response.
-func EncodeResponse(body []byte) *bytes.Buffer {
-	return bytes.NewBuffer(body)
-}
-
-// encodeFrameWithFlags is a lower-level helper (unused externally).
-func encodeFrameWithFlags(payload []byte, flags byte) []byte {
-	buf := make([]byte, 5+len(payload))
-	buf[0] = flags
-	binary.BigEndian.PutUint32(buf[1:5], uint32(len(payload)))
-	copy(buf[5:], payload)
-	return buf
-}
-
-// DecodeRawFrame reads a raw frame returning flags + payload (used by tests).
-func DecodeRawFrame(r io.Reader) (flags byte, payload []byte, err error) {
-	var hdr [5]byte
-	if _, err = io.ReadFull(r, hdr[:]); err != nil {
-		return 0, nil, err
-	}
-	flags = hdr[0]
-	length := binary.BigEndian.Uint32(hdr[1:5])
-	payload = make([]byte, length)
-	_, err = io.ReadFull(r, payload)
-	return flags, payload, err
-}
-
-// ---- context helpers ----
-
-// WithRequestHeader injects headers into a request's context for handlers.
-type contextKey string
-
-const reqKey contextKey = "easyrpc.request"
-
-// RequestFromContext returns the request headers/metadata, if present.
-func RequestFromContext(ctx context.Context) (Request, bool) {
-	r, ok := ctx.Value(reqKey).(Request)
-	return r, ok
-}
-
-// WithRequest stores a Request in context.
-func WithRequest(ctx context.Context, r Request) context.Context {
-	return context.WithValue(ctx, reqKey, r)
 }
