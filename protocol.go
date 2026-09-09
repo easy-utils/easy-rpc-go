@@ -19,6 +19,61 @@ import (
 // Headers is a generic multi-value header map.
 type Headers map[string][]string
 
+// metadataKey is the context key for RPC metadata headers.
+type metadataKey struct{}
+
+// ContextWithHeaders attaches per-RPC metadata headers to a context. Bridges
+// and server handlers use this to pass auth/tracing metadata without touching
+// the wire-level Request/Response types.
+func ContextWithHeaders(ctx context.Context, hdr Headers) context.Context {
+	return context.WithValue(ctx, metadataKey{}, hdr)
+}
+
+// HeadersFromContext returns the metadata headers attached via
+// ContextWithHeaders, or nil. It lets a service implementation read incoming
+// request metadata (e.g. an Authorization header) for authz.
+func HeadersFromContext(ctx context.Context) Headers {
+	h, _ := ctx.Value(metadataKey{}).(Headers)
+	return h
+}
+
+// MetadataTransport decorates a Transport by merging fixed metadata headers
+// (auth tokens, tenant ids, credentials, ...) into every outgoing request.
+// This is the documented way to support auth without changing core: the wire
+// stays additive headers; TLS/CA config lives in the bridge client.
+type MetadataTransport struct {
+	rt Transport
+	md Headers
+}
+
+// WithMetadata wraps rt so each request carries md in its headers. Mutable
+// request-specific headers are preserved; call-specific ones win.
+func WithMetadata(md Headers, rt Transport) *MetadataTransport {
+	return &MetadataTransport{rt: rt, md: md}
+}
+
+// Send implements Transport, merging fixed metadata into the request headers.
+func (t *MetadataTransport) Send(ctx context.Context, req Request) (Response, error) {
+	return t.rt.Send(ctx, t.augment(req))
+}
+
+// OpenStream implements Transport, merging fixed metadata into the request headers.
+func (t *MetadataTransport) OpenStream(ctx context.Context, req Request) (Stream, error) {
+	return t.rt.OpenStream(ctx, t.augment(req))
+}
+
+func (t *MetadataTransport) augment(req Request) Request {
+	if req.Headers == nil {
+		req.Headers = Headers{}
+	}
+	for k, vs := range t.md {
+		if _, ok := req.Headers[k]; !ok {
+			req.Headers[k] = vs
+		}
+	}
+	return req
+}
+
 // Request is a normalized RPC request independent of any HTTP runtime.
 type Request struct {
 	URL     string

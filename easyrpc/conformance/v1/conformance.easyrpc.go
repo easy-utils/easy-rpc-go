@@ -21,7 +21,7 @@ type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
 func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)}))
 	if err != nil { return nil, err }
 	out := &HealthResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
@@ -29,7 +29,7 @@ func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest
 }
 
 func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)}))
 	if err != nil { return nil, err }
 	out := &EchoResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
@@ -37,11 +37,11 @@ func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*
 }
 
 func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)})
+	return c.rt.OpenStream(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)}))
 }
 
 func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)}))
 	if err != nil { return nil, err }
 	out := &FailResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
@@ -57,29 +57,29 @@ type ConformanceServiceService interface {
 
 func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.ServiceRegistry {
 	reg := easyrpc.NewServiceRegistry()
-	reg.Unary["Health"] = func(req []byte, kind string) ([]byte, error) {
+	reg.Unary["Health"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
 		in := &HealthRequest{}
 		if err := decodeIn(req, kind, in); err != nil { return nil, err }
-		out, err := impl.Health(context.Background(), in)
+		out, err := impl.Health(ctx, in)
 		if err != nil { return nil, err }
 		return codecBytes(out, kind), nil
 	}
-	reg.Unary["Echo"] = func(req []byte, kind string) ([]byte, error) {
+	reg.Unary["Echo"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
 		in := &EchoRequest{}
 		if err := decodeIn(req, kind, in); err != nil { return nil, err }
-		out, err := impl.Echo(context.Background(), in)
+		out, err := impl.Echo(ctx, in)
 		if err != nil { return nil, err }
 		return codecBytes(out, kind), nil
 	}
-	reg.Stream["Count"] = func(req []byte, kind string, emit func([]byte, bool) error) error {
+	reg.Stream["Count"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
 		in := &CountRequest{}
 		if err := decodeIn(req, kind, in); err != nil { return err }
-		return impl.Count(context.Background(), in, func(out *CountResponse) error { return emit(codecBytes(out, kind), false) })
+		return impl.Count(ctx, in, func(out *CountResponse) error { return emit(codecBytes(out, kind), false) })
 	}
-	reg.Unary["Fail"] = func(req []byte, kind string) ([]byte, error) {
+	reg.Unary["Fail"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
 		in := &FailRequest{}
 		if err := decodeIn(req, kind, in); err != nil { return nil, err }
-		out, err := impl.Fail(context.Background(), in)
+		out, err := impl.Fail(ctx, in)
 		if err != nil { return nil, err }
 		return codecBytes(out, kind), nil
 	}
@@ -99,5 +99,14 @@ func decodeIn(req []byte, kind string, m proto.Message) error {
 func codecBytes(m proto.Message, kind string) []byte {
 	if kind == "json" { b, _ := protojson.Marshal(m); return b }
 	b, _ := proto.Marshal(m); return b
+}
+
+func reqWithMd(ctx context.Context, req easyrpc.Request) easyrpc.Request {
+	if md := easyrpc.HeadersFromContext(ctx); md != nil && req.Headers == nil {
+		req.Headers = md
+	} else if md != nil {
+		for k, vs := range md { if _, ok := req.Headers[k]; !ok { req.Headers[k] = vs } }
+	}
+	return req
 }
 

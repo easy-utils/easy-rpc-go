@@ -2,10 +2,44 @@ package easyrpc
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"strings"
 )
+
+// ProtocolPrefs selects which HTTP protocols a bridge negotiates.
+// Zero value = HTTP/1 + unencrypted HTTP/2 (h2c prior-knowledge). Bridges use
+// Go's http.Protocols so a single client/server can serve h1 + h2 + h2c.
+type ProtocolPrefs struct {
+	HTTP1   bool // HTTP/1.x (default true)
+	HTTP2   bool // HTTP/2 over TLS (ALPN "h2")
+	H2C     bool // unencrypted HTTP/2 (h2c prior knowledge)
+	// TLSClientConfig, when set, is used by the client for https:// URLs
+	// (custom CA / client certs / InsecureSkipVerify for self-signed CA).
+	TLSClientConfig *tls.Config
+}
+
+// DefaultProtocols returns HTTP/1 + h2c (the negotiation-friendly default
+// that works in cleartext interop without requiring TLS setup).
+func DefaultProtocols() ProtocolPrefs {
+	return ProtocolPrefs{HTTP1: true, H2C: true}
+}
+
+// protocols converts ProtocolPrefs to a *http.Protocols.
+func (p ProtocolPrefs) protocols() *http.Protocols {
+	pr := &http.Protocols{}
+	if p.HTTP1 || (!p.HTTP1 && !p.HTTP2 && !p.H2C) {
+		pr.SetHTTP1(true)
+	}
+	if p.HTTP2 {
+		pr.SetHTTP2(true)
+	}
+	if p.H2C || (!p.HTTP1 && !p.HTTP2 && !p.H2C) {
+		pr.SetUnencryptedHTTP2(true)
+	}
+	return pr
+}
 
 // NetHTTP is the net/http bridge implementing Transport. It speaks Connect
 // wire: unary uses direct body; server-stream uses the framing protocol.
@@ -15,14 +49,26 @@ import (
 // the core protocol logic; it only adapts net/http to the Transport interface.
 type NetHTTP struct {
 	client *http.Client
+	prefs  ProtocolPrefs
 }
 
 // NewNetHTTP returns a bridge over the given client (nil => http.DefaultClient).
+// If client is non-nil its transport is respected; otherwise a transport with
+// the given/negotiiting protocols is built.
 func NewNetHTTP(client *http.Client) *NetHTTP {
+	return NewNetHTTPWith(DefaultProtocols(), client)
+}
+
+// NewNetHTTPWith returns a bridge using the given protocol preferences and
+// optional client (nil => built from the preferences, incl. TLS config for
+// self-signed CA).
+func NewNetHTTPWith(prefs ProtocolPrefs, client *http.Client) *NetHTTP {
 	if client == nil {
-		client = http.DefaultClient
+		tr := &http.Transport{Protocols: prefs.protocols()}
+		tr.TLSClientConfig = prefs.TLSClientConfig
+		client = &http.Client{Transport: tr}
 	}
-	return &NetHTTP{client: client}
+	return &NetHTTP{client: client, prefs: prefs}
 }
 
 // Send implements Transport.Send for unary.
@@ -45,6 +91,7 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 		return Response{}, err
 	}
 	hdrs := goHeaders(resp.Header)
+	hdrs.Set("proto", resp.Proto)
 	return Response{
 		Status:  resp.StatusCode,
 		Headers: hdrs,
@@ -118,3 +165,4 @@ func goHeaders(h http.Header) Headers {
 	}
 	return nh
 }
+

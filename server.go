@@ -1,6 +1,7 @@
 package easyrpc
 
 import (
+	"context"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -8,10 +9,11 @@ import (
 )
 
 // UnaryHandler decodes request bytes -> response bytes. kind is "proto"|"json".
-type UnaryHandler func(req []byte, kind string) (resp []byte, err error)
+// ctx carries request metadata headers (see HeadersFromContext) for authz.
+type UnaryHandler func(ctx context.Context, req []byte, kind string) (resp []byte, err error)
 
 // StreamHandler serves server-stream; emit(payload,true) ends.
-type StreamHandler func(req []byte, kind string, emit func(payload []byte, end bool) error) error
+type StreamHandler func(ctx context.Context, req []byte, kind string, emit func(payload []byte, end bool) error) error
 
 // ServiceRegistry maps method name -> handler.
 type ServiceRegistry struct {
@@ -51,6 +53,9 @@ func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
 		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 			body, _ := io.ReadAll(r.Body)
 			kind := contentKind(r)
+			// Attach incoming metadata headers to the handler context so a
+			// service can read auth/tracing headers.
+			ctx := ContextWithHeaders(r.Context(), goHeaders(r.Header))
 			ct := "application/proto"
 			if kind == "json" {
 				ct = "application/json"
@@ -63,7 +68,7 @@ func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
 				}
 				w.Header().Set("Content-Type", streamContent(ct))
 				sw := NewStreamWriter(w)
-				err := h(body, kind, func(p []byte, end bool) error {
+				err := h(ctx, body, kind, func(p []byte, end bool) error {
 					if end {
 						return sw.End(0, "")
 					}
@@ -81,7 +86,7 @@ func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
 				writeError(w, &RPCError{Code: 5, Message: "method not found"})
 				return
 			}
-			resp, err := h(body, kind)
+			resp, err := h(ctx, body, kind)
 			if err != nil {
 				writeError(w, asRPCError(err))
 				return

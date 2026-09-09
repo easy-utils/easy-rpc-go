@@ -1,4 +1,3 @@
-// easy-rpc Go conformance client (used by the 8x8 matrix). Reads EASY_RPC_BASE.
 package main
 
 import (
@@ -14,7 +13,6 @@ import (
 	cv1 "github.com/easy-utils/easy-rpc-go/easyrpc/conformance/v1"
 )
 
-// baseTransport prefixes a base URL onto relative paths (like other languages).
 type baseTransport struct {
 	rt   easyrpc.Transport
 	base string
@@ -26,12 +24,10 @@ func (b *baseTransport) prepend(u string) string {
 	}
 	return strings.TrimRight(b.base, "/") + u
 }
-
 func (b *baseTransport) Send(ctx context.Context, req easyrpc.Request) (easyrpc.Response, error) {
 	req.URL = b.prepend(req.URL)
 	return b.rt.Send(ctx, req)
 }
-
 func (b *baseTransport) OpenStream(ctx context.Context, req easyrpc.Request) (easyrpc.Stream, error) {
 	req.URL = b.prepend(req.URL)
 	return b.rt.OpenStream(ctx, req)
