@@ -101,27 +101,53 @@ type RPCError struct {
 
 func (e *RPCError) Error() string { return fmt.Sprintf("easyrpc: code=%d %s", e.Code, e.Message) }
 
-// HTTPStatus maps a Connect code to an HTTP status.
+// HTTPStatus maps a Connect code to an HTTP status. Covers the full
+// gRPC/Connect error-code space:
+//
+//	0 OK(200) 1 499 2 500 3 400 4 504 5 404 6 409 7 403 8 429
+//	9 400 10 409 11 400 12 501 13 500 14 503 15 500 16 401
 func HTTPStatus(code int) int {
 	switch code {
+	case 1:
+		return 499 // client closed
+	case 2:
+		return http.StatusInternalServerError
 	case 3:
 		return http.StatusBadRequest
+	case 4:
+		return http.StatusGatewayTimeout
 	case 5:
 		return http.StatusNotFound
+	case 6:
+		return http.StatusConflict
 	case 7:
 		return http.StatusForbidden
 	case 8:
 		return http.StatusTooManyRequests
-	case 16:
-		return http.StatusUnauthorized
+	case 9:
+		return http.StatusBadRequest
+	case 10:
+		return http.StatusConflict
+	case 11:
+		return http.StatusBadRequest
+	case 12:
+		return http.StatusNotImplemented
+	case 13:
+		return http.StatusInternalServerError
 	case 14:
 		return http.StatusServiceUnavailable
+	case 15:
+		return http.StatusInternalServerError
+	case 16:
+		return http.StatusUnauthorized
 	default:
 		return http.StatusInternalServerError
 	}
 }
 
-// ConnectCode maps an HTTP status to a Connect code.
+// ConnectCode maps an HTTP status to a Connect code. Because several Connect
+// codes share an HTTP status (400<->3/9/11, 409<->6/10, 500<->2/13/15), the
+// reverse direction is lossy and returns the most common code for that status.
 func connectFromStatus(status int) int {
 	switch status {
 	case http.StatusBadRequest:
@@ -136,6 +162,14 @@ func connectFromStatus(status int) int {
 		return 8
 	case http.StatusServiceUnavailable:
 		return 14
+	case http.StatusConflict:
+		return 10
+	case http.StatusGatewayTimeout:
+		return 4
+	case http.StatusNotImplemented:
+		return 12
+	case 499:
+		return 1
 	default:
 		return 13
 	}

@@ -26,77 +26,117 @@ func NewServiceRegistry() *ServiceRegistry {
 	return &ServiceRegistry{Unary: map[string]UnaryHandler{}, Stream: map[string]StreamHandler{}}
 }
 
-// contentKind picks "proto" or "json" from the Content-Type/Accept header,
-// defaulting to proto.
-func contentKind(r *http.Request) string {
-	ct := r.Header.Get("Content-Type")
-	if strings.HasPrefix(ct, "application/json") {
+// contentKind picks "proto" or "json" from the incoming headers, defaulting to proto.
+func contentKindHeaders(h Headers) string {
+	if ct := h.Get("Content-Type"); strings.HasPrefix(ct, "application/json") {
 		return "json"
 	}
-	accept := r.Header.Get("Accept")
-	if strings.HasPrefix(accept, "application/json") {
+	if ac := h.Get("Accept"); strings.HasPrefix(ac, "application/json") {
 		return "json"
 	}
 	return "proto"
 }
 
-// Serve builds an http.Handler dispatching by method specs to a service
-// registry, honoring REST paths and the proto/json content negotiation.
-func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
-	mux := http.NewServeMux()
-	for _, m := range methods {
-		path := m.Path
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
-		spec := m
-		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-			body, _ := io.ReadAll(r.Body)
-			kind := contentKind(r)
-			// Attach incoming metadata headers to the handler context so a
-			// service can read auth/tracing headers.
-			ctx := ContextWithHeaders(r.Context(), goHeaders(r.Header))
-			ct := "application/proto"
-			if kind == "json" {
-				ct = "application/json"
-			}
-			if spec.ServerStream {
-				h := reg.Stream[spec.Name]
-				if h == nil {
-					writeError(w, &RPCError{Code: 5, Message: "method not found"})
-					return
-				}
-				w.Header().Set("Content-Type", streamContent(ct))
-				sw := NewStreamWriter(w)
-				err := h(ctx, body, kind, func(p []byte, end bool) error {
-					if end {
-						return sw.End(0, "")
-					}
-					return sw.Write(p)
-				})
-				if err != nil {
-					_ = sw.End(13, err.Error())
-					return
-				}
-				_ = sw.End(0, "")
-				return
-			}
-			h := reg.Unary[spec.Name]
-			if h == nil {
-				writeError(w, &RPCError{Code: 5, Message: "method not found"})
-				return
-			}
-			resp, err := h(ctx, body, kind)
-			if err != nil {
-				writeError(w, asRPCError(err))
-				return
-			}
-			w.Header().Set("Content-Type", ct)
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(resp)
-		})
+// Dispatch is the ASGI-style pure application. It decodes an RPC request into
+// a response given method specs + a service registry. It is protocol-agnostic:
+// it never imports a specific HTTP runtime. Backends (net/http, fasthttp, a
+// hand-rolled server, ...) only adapt `Request -> Response` by calling Dispatch.
+func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *ServiceRegistry) Response {
+	kind := contentKindHeaders(req.Headers)
+	path := req.URL
+	if i := strings.IndexByte(path, '?'); i >= 0 {
+		path = path[:i]
 	}
-	return mux
+	ct := "application/proto"
+	if kind == "json" {
+		ct = "application/json"
+	}
+	// find method by path
+	var spec *MethodSpec
+	for i := range methods {
+		if methods[i].Path == path {
+			spec = &methods[i]
+			break
+		}
+	}
+	if spec == nil {
+		return errorResponse(&RPCError{Code: 5, Message: "not found"})
+	}
+	if spec.ServerStream {
+		h := reg.Stream[spec.Name]
+		if h == nil {
+			return errorResponse(&RPCError{Code: 5, Message: "method not found"})
+		}
+		hdrs := Headers{"Content-Type": []string{streamContent(ct)}}
+		frames := [][]byte{Frame(nil, true)} // placeholder appended below
+		_ = frames
+		var payloads [][]byte
+		emit := func(p []byte, end bool) error {
+			if end {
+				return nil
+			}
+			payloads = append(payloads, p)
+			return nil
+		}
+		err := h(ctx, req.Body, kind, emit)
+		if err != nil {
+			hdrs["Content-Type"] = []string{"text/plain"}
+			return Response{Status: HTTPStatus(asRPCError(err).Code), Headers: hdrs, Body: []byte(err.Error()), Error: asRPCError(err)}
+		}
+		var out []byte
+		for _, p := range payloads {
+			out = append(out, Frame(p, false)...)
+		}
+		out = append(out, Frame(nil, true)...)
+		return Response{Status: 200, Headers: hdrs, Body: out}
+	}
+	h := reg.Unary[spec.Name]
+	if h == nil {
+		return errorResponse(&RPCError{Code: 5, Message: "method not found"})
+	}
+	resp, err := h(ctx, req.Body, kind)
+	if err != nil {
+		return errorResponse(asRPCError(err))
+	}
+	return Response{Status: 200, Headers: Headers{"Content-Type": []string{ct}}, Body: resp}
+}
+
+func errorResponse(err *RPCError) Response {
+	return Response{
+		Status:  HTTPStatus(err.Code),
+		Headers: Headers{"Content-Type": []string{"text/plain"}},
+		Body:    []byte(err.Message),
+		Error:   err,
+	}
+}
+
+// ServeNetHTTP adapts Dispatch to a net/http handler. It is the default bridge
+// backend for Go. Any other backend can call Dispatch directly.
+func ServeNetHTTP(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		hdrs := goHeaders(r.Header)
+		req := Request{
+			URL:     r.URL.Path,
+			Method:  r.Method,
+			Headers: hdrs,
+			Body:    body,
+		}
+		ctx := ContextWithHeaders(r.Context(), hdrs)
+		res := Dispatch(ctx, req, methods, reg)
+		// write response headers
+		for k, vs := range res.Headers {
+			w.Header()[k] = vs
+		}
+		w.WriteHeader(res.Status)
+		_, _ = w.Write(res.Body)
+	})
+}
+
+// Serve is a compatibility alias: returns a net/http handler for the given
+// methods + registry (h1, h2c via http.Protocols when the caller configures it).
+func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
+	return ServeNetHTTP(methods, reg)
 }
 
 func streamContent(ct string) string {
@@ -151,7 +191,8 @@ func itoa(i int) string {
 	return string(b[pos:])
 }
 
-// StreamWriter writes framed responses for a server-stream handler.
+// StreamWriter writes framed responses for a server-stream handler, writing
+// frames directly to an http.ResponseWriter.
 type StreamWriter struct {
 	w   io.Writer
 	end bool
