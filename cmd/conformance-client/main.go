@@ -1,9 +1,11 @@
+// easy-rpc Go client re-almed via NewTransport(realm). This test runs against
+// the Go conformance server (h1 + h2c) and supports both std and auto realms.
 package main
 
 import (
-	"context"
 	"io"
 	"os"
+	"context"
 	"fmt"
 	"strings"
 
@@ -13,30 +15,13 @@ import (
 	cv1 "github.com/easy-utils/easy-rpc-go/easyrpc/conformance/v1"
 )
 
-type baseTransport struct {
-	rt   easyrpc.Transport
-	base string
-}
-
-func (b *baseTransport) prepend(u string) string {
-	if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
-		return u
-	}
-	return strings.TrimRight(b.base, "/") + u
-}
-func (b *baseTransport) Send(ctx context.Context, req easyrpc.Request) (easyrpc.Response, error) {
-	req.URL = b.prepend(req.URL)
-	return b.rt.Send(ctx, req)
-}
-func (b *baseTransport) OpenStream(ctx context.Context, req easyrpc.Request) (easyrpc.Stream, error) {
-	req.URL = b.prepend(req.URL)
-	return b.rt.OpenStream(ctx, req)
-}
-
 func main() {
 	base := os.Getenv("EASY_RPC_BASE")
 	if base == "" { base = "http://127.0.0.1:18888" }
-	rt := &baseTransport{rt: easyrpc.NewNetHTTP(nil), base: base}
+	realm := easyrpc.Realm(os.Getenv("EASY_RPC_REALM"))
+	if realm == "" { realm = easyrpc.RealmStd }
+
+	rt := &baseTransport{rt: easyrpc.NewTransport(realm), base: base}
 	c := cv1.NewConformanceServiceClient(rt)
 	ctx := context.Background()
 
@@ -58,5 +43,23 @@ func main() {
 	if len(idx) != 3 || idx[0] != 0 || idx[1] != 1 || idx[2] != 2 {
 		fmt.Println("COUNT_WRONG", idx); os.Exit(1)
 	}
-	fmt.Println("GO_CLIENT_OK")
+	fmt.Println("GO_CLIENT_OK", string(realm))
+}
+
+type baseTransport struct {
+	rt   easyrpc.Transport
+	base string
+}
+
+func (b *baseTransport) prepend(u string) string {
+	if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") { return u }
+	return strings.TrimRight(b.base, "/") + u
+}
+func (b *baseTransport) Send(ctx context.Context, req easyrpc.Request) (easyrpc.Response, error) {
+	req.URL = b.prepend(req.URL)
+	return b.rt.Send(ctx, req)
+}
+func (b *baseTransport) OpenStream(ctx context.Context, req easyrpc.Request) (easyrpc.Stream, error) {
+	req.URL = b.prepend(req.URL)
+	return b.rt.OpenStream(ctx, req)
 }
