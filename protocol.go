@@ -148,7 +148,7 @@ func HTTPStatus(code int) int {
 // ConnectCode maps an HTTP status to a Connect code. Because several Connect
 // codes share an HTTP status (400<->3/9/11, 409<->6/10, 500<->2/13/15), the
 // reverse direction is lossy and returns the most common code for that status.
-func connectFromStatus(status int) int {
+func ConnectFromStatus(status int) int {
 	switch status {
 	case http.StatusBadRequest:
 		return 3
@@ -321,3 +321,5 @@ func statusFromHeader(h Headers) *RPCError {
 	c, _ := strconv.Atoi(code)
 	return &RPCError{Code: c, Message: h.Get("connect-error")}
 }
+
+func connectFromStatus(status int) int { return ConnectFromStatus(status) }

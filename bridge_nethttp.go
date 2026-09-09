@@ -166,3 +166,14 @@ func goHeaders(h http.Header) Headers {
 	return nh
 }
 
+// HeaderToHTTP converts easy-rpc Headers to net/http.Header.
+func HeaderToHTTP(h Headers) http.Header { return httpHeader(h) }
+
+// NetHTTPStream wraps a response body as an easy-rpc Stream.
+type NetHTTPStream struct{ *httpStream }
+
+// NewStream wraps a *http.Response into an easy-rpc Stream (used by optional
+// bridges, e.g. h3, that fetch a *http.Response themselves).
+func NewStream(resp *http.Response) Stream { return &httpStream{resp: resp, body: resp.Body} }
+
+
