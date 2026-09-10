@@ -158,6 +158,9 @@ func httpHeader(h Headers) http.Header {
 	return nh
 }
 
+// GoHeaders converts net/http.Header to easy-rpc Headers.
+func GoHeaders(h http.Header) Headers { return goHeaders(h) }
+
 func goHeaders(h http.Header) Headers {
 	nh := make(Headers)
 	for k, v := range h {

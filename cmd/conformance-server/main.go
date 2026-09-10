@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	easyrpc "github.com/easy-utils/easy-rpc-go"
+	easyrpcserver "github.com/easy-utils/easy-rpc-go/server"
 	cv1 "github.com/easy-utils/easy-rpc-go/easyrpc/conformance/v1"
 )
 
@@ -31,7 +31,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:      "127.0.0.1:" + port(),
-		Handler:   easyrpc.Serve(methods, reg),
+		Handler:   easyrpcserver.Serve(methods, reg),
 		Protocols: proto,
 	}
 	_ = srv.ListenAndServe()

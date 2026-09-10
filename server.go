@@ -2,9 +2,7 @@ package easyrpc
 
 import (
 	"context"
-	"encoding/base64"
 	"io"
-	"net/http"
 	"strings"
 )
 
@@ -110,53 +108,11 @@ func errorResponse(err *RPCError) Response {
 	}
 }
 
-// ServeNetHTTP adapts Dispatch to a net/http handler. It is the default bridge
-// backend for Go. Any other backend can call Dispatch directly.
-func ServeNetHTTP(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		hdrs := goHeaders(r.Header)
-		req := Request{
-			URL:     r.URL.Path,
-			Method:  r.Method,
-			Headers: hdrs,
-			Body:    body,
-		}
-		ctx := ContextWithHeaders(r.Context(), hdrs)
-		res := Dispatch(ctx, req, methods, reg)
-		// write response headers
-		for k, vs := range res.Headers {
-			w.Header()[k] = vs
-		}
-		w.WriteHeader(res.Status)
-		_, _ = w.Write(res.Body)
-	})
-}
-
-// Serve is a compatibility alias: returns a net/http handler for the given
-// methods + registry (h1, h2c via http.Protocols when the caller configures it).
-func Serve(methods []MethodSpec, reg *ServiceRegistry) http.Handler {
-	return ServeNetHTTP(methods, reg)
-}
-
 func streamContent(ct string) string {
 	if ct == "application/json" {
 		return "application/connect+json"
 	}
 	return "application/connect+proto"
-}
-
-func writeError(w http.ResponseWriter, err *RPCError) {
-	code := HTTPStatus(err.Code)
-	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("connect-code", itoa(err.Code))
-	w.Header().Set("connect-error", encodeErr(err.Message))
-	w.WriteHeader(code)
-	_, _ = w.Write([]byte(err.Message))
-}
-
-func encodeErr(msg string) string {
-	return base64.StdEncoding.EncodeToString([]byte(msg))
 }
 
 func asRPCError(err error) *RPCError {
@@ -167,28 +123,6 @@ func asRPCError(err error) *RPCError {
 		return re
 	}
 	return &RPCError{Code: 13, Message: err.Error()}
-}
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	neg := i < 0
-	if neg {
-		i = -i
-	}
-	var b [20]byte
-	pos := len(b)
-	for i > 0 {
-		pos--
-		b[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	if neg {
-		pos--
-		b[pos] = '-'
-	}
-	return string(b[pos:])
 }
 
 // StreamWriter writes framed responses for a server-stream handler, writing
