@@ -24,6 +24,20 @@ func NewServiceRegistry() *ServiceRegistry {
 	return &ServiceRegistry{Unary: map[string]UnaryHandler{}, Stream: map[string]StreamHandler{}}
 }
 
+// ResponseWriter is the push-based server sink. Dispatch writes the response
+// into it as it is produced; a runtime adapter (net/http, fasthttp, ...)
+// implements it for its transport. Stream frames are written with WriteFrame
+// and flushed by the adapter — never buffered.
+type ResponseWriter interface {
+	// Status sets the HTTP status (called before the first write).
+	Status(code int)
+	// Header receives all response headers before the first write.
+	Header(h Headers)
+	// WriteFrame writes one payload: an already-framed stream frame, or the raw
+	// unary body.
+	WriteFrame(payload []byte) error
+}
+
 // contentKind picks "proto" or "json" from the incoming headers, defaulting to proto.
 func contentKindHeaders(h Headers) string {
 	if ct := h.Get("Content-Type"); strings.HasPrefix(ct, "application/json") {
@@ -35,11 +49,12 @@ func contentKindHeaders(h Headers) string {
 	return "proto"
 }
 
-// Dispatch is the ASGI-style pure application. It decodes an RPC request into
-// a response given method specs + a service registry. It is protocol-agnostic:
-// it never imports a specific HTTP runtime. Backends (net/http, fasthttp, a
-// hand-rolled server, ...) only adapt `Request -> Response` by calling Dispatch.
-func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *ServiceRegistry) Response {
+// Dispatch is the ASGI-style pure application. It decodes an RPC request, runs
+// the handler, and PUSHES the response into w frame-by-frame (server-stream is
+// never buffered). It is protocol-agnostic: it never imports a specific HTTP
+// runtime. Backends (net/http, fasthttp, a hand-rolled server, ...) only adapt
+// by providing a ResponseWriter.
+func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *ServiceRegistry, w ResponseWriter) error {
 	kind := contentKindHeaders(req.Headers)
 	path := req.URL
 	if i := strings.IndexByte(path, '?'); i >= 0 {
@@ -58,54 +73,60 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		}
 	}
 	if spec == nil {
-		return errorResponse(&RPCError{Code: 5, Message: "not found"})
+		return writeError(w, &RPCError{Code: 5, Message: "not found"})
 	}
 	if spec.ServerStream {
 		h := reg.Stream[spec.Name]
 		if h == nil {
-			return errorResponse(&RPCError{Code: 5, Message: "method not found"})
+			return writeError(w, &RPCError{Code: 5, Message: "method not found"})
 		}
-		hdrs := Headers{"Content-Type": []string{streamContent(ct)}}
-		frames := [][]byte{Frame(nil, true)} // placeholder appended below
-		_ = frames
-		var payloads [][]byte
+		// Connect semantics: a server-stream is always HTTP 200; failures ride
+		// the END frame, never an HTTP status.
+		w.Status(200)
+		w.Header(Headers{"Content-Type": []string{streamContent(ct)}})
+		var ended bool
 		emit := func(p []byte, end bool) error {
-			if end {
+			if ended {
 				return nil
 			}
-			payloads = append(payloads, p)
+			if end {
+				ended = true
+				return w.WriteFrame(Frame(nil, true))
+			}
+			return w.WriteFrame(Frame(p, false))
+		}
+		if err := h(ctx, req.Body, kind, emit); err != nil {
+			re := asRPCError(err)
+			if !ended {
+				ended = true
+				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message}), true))
+			}
 			return nil
 		}
-		err := h(ctx, req.Body, kind, emit)
-		if err != nil {
-			hdrs["Content-Type"] = []string{"text/plain"}
-			return Response{Status: HTTPStatus(asRPCError(err).Code), Headers: hdrs, Body: []byte(err.Error()), Error: asRPCError(err)}
+		if !ended {
+			_ = w.WriteFrame(Frame(nil, true))
 		}
-		var out []byte
-		for _, p := range payloads {
-			out = append(out, Frame(p, false)...)
-		}
-		out = append(out, Frame(nil, true)...)
-		return Response{Status: 200, Headers: hdrs, Body: out}
+		return nil
 	}
 	h := reg.Unary[spec.Name]
 	if h == nil {
-		return errorResponse(&RPCError{Code: 5, Message: "method not found"})
+		return writeError(w, &RPCError{Code: 5, Message: "method not found"})
 	}
+	// Unary: resolve fully before writing so a failure can set a real status.
 	resp, err := h(ctx, req.Body, kind)
 	if err != nil {
-		return errorResponse(asRPCError(err))
+		return writeError(w, asRPCError(err))
 	}
-	return Response{Status: 200, Headers: Headers{"Content-Type": []string{ct}}, Body: resp}
+	w.Status(200)
+	w.Header(Headers{"Content-Type": []string{ct}})
+	return w.WriteFrame(resp)
 }
 
-func errorResponse(err *RPCError) Response {
-	return Response{
-		Status:  HTTPStatus(err.Code),
-		Headers: Headers{"Content-Type": []string{"text/plain"}},
-		Body:    []byte(err.Message),
-		Error:   err,
-	}
+// writeError emits a non-200 error response. Only reached before any body bytes.
+func writeError(w ResponseWriter, err *RPCError) error {
+	w.Status(HTTPStatus(err.Code))
+	w.Header(Headers{"Content-Type": []string{"text/plain"}})
+	return w.WriteFrame([]byte(err.Message))
 }
 
 func streamContent(ct string) string {
@@ -126,7 +147,7 @@ func asRPCError(err error) *RPCError {
 }
 
 // StreamWriter writes framed responses for a server-stream handler, writing
-// frames directly to an http.ResponseWriter.
+// frames directly to an io.Writer (e.g. an http.ResponseWriter).
 type StreamWriter struct {
 	w   io.Writer
 	end bool

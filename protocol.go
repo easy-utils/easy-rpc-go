@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // Headers is a generic multi-value header map.
@@ -200,6 +201,16 @@ func (h Headers) Set(k, v string) { h[k] = []string{v} }
 func (h Headers) Get(k string) string {
 	if v := h[k]; len(v) > 0 {
 		return v[0]
+	}
+	// Canonical MIME header form (matches net/http's canonicalization).
+	ck := http.CanonicalHeaderKey(k)
+	if v := h[ck]; len(v) > 0 {
+		return v[0]
+	}
+	for key, v := range h {
+		if strings.EqualFold(key, k) && len(v) > 0 {
+			return v[0]
+		}
 	}
 	return ""
 }
