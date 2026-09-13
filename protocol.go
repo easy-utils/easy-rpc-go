@@ -323,7 +323,7 @@ type ServiceDesc struct {
 func SortMethods(m []MethodSpec) { sort.Slice(m, func(i, j int) bool { return m[i].Name < m[j].Name }) }
 
 // StatusFromHeader parses connect-error into an RPCError.
-func statusFromHeader(h Headers) *RPCError {
+func StatusFromHeader(h Headers) *RPCError {
 	code := h.Get("connect-code")
 	if code == "" {
 		// tolerate gRPC-style for interop
@@ -334,3 +334,6 @@ func statusFromHeader(h Headers) *RPCError {
 }
 
 func connectFromStatus(status int) int { return ConnectFromStatus(status) }
+
+// statusFromHeader is the internal alias kept for existing callers.
+func statusFromHeader(h Headers) *RPCError { return StatusFromHeader(h) }

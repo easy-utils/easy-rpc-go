@@ -92,11 +92,21 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 	}
 	hdrs := goHeaders(resp.Header)
 	hdrs.Set("proto", resp.Proto)
-	return Response{
+	out := Response{
 		Status:  resp.StatusCode,
 		Headers: hdrs,
 		Body:    body,
-	}, nil
+	}
+	// Non-2xx: reconstruct the exact Connect error from the headers (the HTTP
+	// status alone is lossy — several Connect codes share a status).
+	if resp.StatusCode >= 300 {
+		if e := statusFromHeader(hdrs); e != nil {
+			out.Error = e
+		} else {
+			out.Error = &RPCError{Code: ConnectFromStatus(resp.StatusCode), Message: string(body)}
+		}
+	}
+	return out, nil
 }
 
 // OpenStream implements Transport.OpenStream for server-stream.

@@ -3,6 +3,7 @@ package easyrpc
 import (
 	"context"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -122,10 +123,16 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	return w.WriteFrame(resp)
 }
 
-// writeError emits a non-200 error response. Only reached before any body bytes.
+// writeError emits a non-200 error response. Only reached before any body
+// bytes. The Connect code travels as the `connect-code` header so the client
+// can reconstruct the exact error (the HTTP status alone is lossy).
 func writeError(w ResponseWriter, err *RPCError) error {
 	w.Status(HTTPStatus(err.Code))
-	w.Header(Headers{"Content-Type": []string{"text/plain"}})
+	w.Header(Headers{
+		"Content-Type":  []string{"text/plain"},
+		"Connect-Code":  []string{strconv.Itoa(err.Code)},
+		"Connect-Error": []string{err.Message},
+	})
 	return w.WriteFrame([]byte(err.Message))
 }
 
