@@ -22,7 +22,7 @@ import (
 )
 
 // Version is the easy-rpc Go core version.
-const Version = "0.5.0"
+const Version = "0.5.1"
 
 // Headers is a generic multi-value header map.
 type Headers map[string][]string
@@ -590,7 +590,11 @@ func (c cancelOnClose) Cancel() {
 
 // FrameCompressed wraps a payload in a frame with the Compressed flag set.
 func FrameCompressed(payload []byte) []byte {
-	out := Frame(payload, false)
+	z, err := GzipCompress(payload)
+	if err != nil {
+		return Frame(payload, false) // opportunistic: identity on failure
+	}
+	out := Frame(z, false)
 	out[0] |= 0x01
 	return out
 }
@@ -598,14 +602,41 @@ func FrameCompressed(payload []byte) []byte {
 // ReadFrameDecompressed reads one frame and gzip-decompresses it when the
 // Compressed flag is set.
 func ReadFrameDecompressed(r io.Reader) (payload []byte, endStream bool, err error) {
-	payload, end, err := ReadFrame(r)
+	payload, end, flags, err := readFrameFlags(r)
 	if err != nil {
 		return nil, false, err
 	}
-	if z, derr := GzipDecompress(payload); derr == nil {
+	if flags&0x01 != 0 {
+		// Fault matrix M10: a flagged-but-corrupt gzip payload is a protocol
+		// error, never silently-yielded raw compressed bytes.
+		z, derr := GzipDecompress(payload)
+		if derr != nil {
+			return nil, false, &RPCError{Code: 13, Message: "corrupt gzip frame: " + derr.Error()}
+		}
 		payload = z
 	}
 	return payload, end, nil
+}
+
+// readFrameFlags is ReadFrame but also returns the raw frame flags byte.
+func readFrameFlags(r io.Reader) (payload []byte, endStream bool, flags byte, err error) {
+	var hdr [5]byte
+	if _, err = io.ReadFull(r, hdr[:]); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, false, 0, io.EOF
+		}
+		return nil, false, 0, err
+	}
+	flags = hdr[0]
+	length := binary.BigEndian.Uint32(hdr[1:5])
+	if length > DefaultMaxMessageBytes {
+		return nil, false, 0, &RPCError{Code: 8, Message: "frame too large"}
+	}
+	payload = make([]byte, length)
+	if _, err = io.ReadFull(r, payload); err != nil {
+		return nil, false, 0, err
+	}
+	return payload, flags&0x02 != 0, flags, nil
 }
 
 // GzipCompress gzip-compresses data.

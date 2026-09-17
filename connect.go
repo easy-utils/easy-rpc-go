@@ -26,12 +26,21 @@ type ConnectOptions struct {
 	Timeout time.Duration
 	// Extra interceptors, applied after the built-ins (closest to the adapter).
 	Interceptors []Interceptor
+	// Adapter injects a custom transport. When non-nil, Mode is ignored and
+	// the built-in metadata/deadline interceptors (and any user interceptors)
+	// wrap THIS adapter — the same injection semantics as C#
+	// ConnectOptions.Adapter and Swift connect(transport:).
+	Adapter Transport
 }
 
 // Connect builds a ready-to-use Transport: adapter(Mode) wrapped with the
 // built-in metadata + deadline interceptors (when configured) and any user
 // interceptors. Swapping Mode leaves the interceptors unchanged.
 func Connect(opts ConnectOptions) Transport {
+	// A custom adapter short-circuits mode selection; interceptors still apply.
+	if opts.Adapter != nil {
+		return withStandardInterceptors(opts, opts.Adapter)
+	}
 	mode := opts.Mode
 	if mode == "" {
 		mode = ModeAuto
@@ -48,6 +57,12 @@ func Connect(opts ConnectOptions) Transport {
 		inner = &baseURLTransport{rt: inner, base: opts.BaseURL}
 	}
 
+	return withStandardInterceptors(opts, inner)
+}
+
+// withStandardInterceptors wraps an adapter with the built-in metadata +
+// deadline interceptors (when configured) and any user interceptors.
+func withStandardInterceptors(opts ConnectOptions, inner Transport) Transport {
 	var ics []Interceptor
 	if opts.Token != "" {
 		ics = append(ics, MetadataInterceptor(Headers{"Authorization": {"Bearer " + opts.Token}}))

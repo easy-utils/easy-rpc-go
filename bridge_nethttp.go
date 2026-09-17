@@ -144,19 +144,27 @@ func (b *NetHTTP) OpenStream(ctx context.Context, req Request) (Stream, error) {
 
 // httpStream adapts an http.Response body to the Stream interface.
 type httpStream struct {
-	resp *http.Response
-	body io.ReadCloser
+	resp  *http.Response
+	body  io.ReadCloser
+	ended bool
 }
 
 func (s *httpStream) Recv() ([]byte, error) {
 	payload, end, err := ReadFrameDecompressed(s.body)
 	if err != nil {
 		if err == io.EOF {
-			return nil, io.EOF
+			// Fault matrix F2: the Connect protocol requires every
+			// server-stream to terminate with an END frame; a body that ends
+			// without one was truncated mid-stream.
+			if s.ended {
+				return nil, io.EOF
+			}
+			return nil, &RPCError{Code: 13, Message: "stream ended without END frame"}
 		}
 		return nil, err
 	}
 	if end {
+		s.ended = true
 		// A non-empty END payload is a Connect end-stream error.
 		if m := DecodeEndStream(payload); m.Code != 0 {
 			return nil, &RPCError{Code: m.Code, Message: m.Message, Details: m.Details}
