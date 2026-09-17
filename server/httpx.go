@@ -10,6 +10,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -90,6 +91,13 @@ func ServeNetHTTP(methods []easyrpc.MethodSpec, reg *easyrpc.ServiceRegistry) ht
 			Body:    body,
 		}
 		ctx := easyrpc.ContextWithHeaders(r.Context(), hdrs)
+		// Apply the Connect request deadline to the context so handlers can
+		// observe cancellation; the adapter also bounds the write loop.
+		if d := easyrpc.ParseTimeout(hdrs.Get(easyrpc.HeaderTimeout)); d > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, d)
+			defer cancel()
+		}
 		hw := &httpWriter{w: w}
 		if err := easyrpc.Dispatch(ctx, req, methods, reg, hw); err != nil && !hw.started {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

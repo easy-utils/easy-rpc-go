@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestFrameRoundtrip(t *testing.T) {
@@ -127,5 +128,18 @@ func TestStreamRecvSurfacesEndError(t *testing.T) {
 	re, ok := err.(*RPCError)
 	if !ok || re.Code != 16 {
 		t.Fatalf("expected RPCError 16, got %v", err)
+	}
+}
+
+func TestTimeoutHelpers(t *testing.T) {
+	if ParseTimeout("") != 0 || ParseTimeout("abc") != 0 || ParseTimeout("0") != 0 {
+		t.Fatalf("parse zero cases")
+	}
+	if ParseTimeout("250") != 250*time.Millisecond {
+		t.Fatalf("parse 250")
+	}
+	req := WithTimeout(Request{URL: "/x"}, 300*time.Millisecond)
+	if req.Headers.Get(HeaderTimeout) != "300" {
+		t.Fatalf("with timeout header = %q", req.Headers.Get(HeaderTimeout))
 	}
 }

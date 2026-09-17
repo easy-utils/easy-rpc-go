@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Headers is a generic multi-value header map.
@@ -334,6 +335,34 @@ func DecodeEndStream(payload []byte) EndStreamMessage {
 		return EndStreamMessage{}
 	}
 	return EndStreamMessage{Code: CodeFromString(es.Error.Code), Message: es.Error.Message}
+}
+
+// HeaderTimeout is the Connect request-timeout header.
+const HeaderTimeout = "connect-timeout-ms"
+
+// ParseTimeout parses the Connect timeout header into a duration (0 = none).
+func ParseTimeout(value string) time.Duration {
+	if value == "" {
+		return 0
+	}
+	ms, err := strconv.Atoi(value)
+	if err != nil || ms <= 0 {
+		return 0
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// WithTimeout attaches a deadline to a request's headers (and context, if the
+// caller uses the returned context).
+func WithTimeout(req Request, d time.Duration) Request {
+	if d <= 0 {
+		return req
+	}
+	if req.Headers == nil {
+		req.Headers = Headers{}
+	}
+	req.Headers.Set(HeaderTimeout, strconv.FormatInt(d.Milliseconds(), 10))
+	return req
 }
 
 // URLFor builds the default gRPC-style path for a method.
