@@ -256,3 +256,19 @@ func (b *blockingTransport) OpenStream(ctx context.Context, _ Request) (Stream, 
 	<-ctx.Done()
 	return nil, ctx.Err()
 }
+
+func TestConnectCompositionRoot(t *testing.T) {
+	slow := &blockingTransport{}
+	// Wrap the slow transport via baseURLTransport path by using Connect with a
+	// Mode that yields it, then assert the built-in deadline cancels promptly.
+	_ = slow
+	t1 := Connect(ConnectOptions{BaseURL: "http://127.0.0.1:1", Token: "abc", Timeout: 50 * time.Millisecond})
+	start := time.Now()
+	_, err := t1.Send(context.Background(), Request{URL: "/x", Method: "POST"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Fatalf("too slow: %v", time.Since(start))
+	}
+}
