@@ -44,10 +44,11 @@ func HeadersFromContext(ctx context.Context) Headers {
 	return h
 }
 
-// MetadataTransport decorates a Transport by merging fixed metadata headers
-// (auth tokens, tenant ids, credentials, ...) into every outgoing request.
-// This is the documented way to support auth without changing core: the wire
-// stays additive headers; TLS/CA config lives in the bridge client.
+// MetadataTransport decorates a Transport by merging fixed metadata headers.
+//
+// Deprecated: use WithInterceptors(rt, MetadataInterceptor(md)). The interceptor
+// form composes with TimeoutInterceptor and any user interceptor, and works
+// over any adapter.
 type MetadataTransport struct {
 	rt Transport
 	md Headers
