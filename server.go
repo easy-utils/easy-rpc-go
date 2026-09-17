@@ -42,10 +42,12 @@ type ResponseWriter interface {
 
 // contentKind picks "proto" or "json" from the incoming headers, defaulting to proto.
 func contentKindHeaders(h Headers) string {
-	if ct := h.Get("Content-Type"); strings.HasPrefix(ct, "application/json") {
+	// Streaming JSON arrives as application/connect+json — both prefixes are
+	// JSON kinds (spec §2).
+	if ct := h.Get("Content-Type"); strings.HasPrefix(ct, "application/json") || strings.HasPrefix(ct, "application/connect+json") {
 		return "json"
 	}
-	if ac := h.Get("Accept"); strings.HasPrefix(ac, "application/json") {
+	if ac := h.Get("Accept"); strings.HasPrefix(ac, "application/json") || strings.HasPrefix(ac, "application/connect+json") {
 		return "json"
 	}
 	return "proto"

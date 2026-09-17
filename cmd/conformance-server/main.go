@@ -84,12 +84,18 @@ func (impl) StreamFailDetails(c context.Context, in *cv1.StreamFailDetailsReques
 	}
 }
 
-func port() string {
+func addr() string {
+	// BIND=127.0.0.1 keeps it pod-local; BIND=0.0.0.0 exposes the conformance
+	// surface to in-cluster peers (macOS worker transport tests).
+	b := os.Getenv("BIND")
+	if b == "" {
+		b = "0.0.0.0"
+	}
 	p := os.Getenv("PORT")
 	if p == "" {
 		p = "18888"
 	}
-	return p
+	return b + ":" + p
 }
 
 func main() {
@@ -103,7 +109,7 @@ func main() {
 	proto.SetUnencryptedHTTP2(true)
 
 	srv := &http.Server{
-		Addr:      "127.0.0.1:" + port(),
+		Addr:      addr(),
 		Handler:   easyrpcserver.Serve(methods, reg),
 		Protocols: proto,
 	}
