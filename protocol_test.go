@@ -232,3 +232,27 @@ func TestGzipRoundtrip(t *testing.T) {
 		t.Fatalf("read: %v end=%v", err, end)
 	}
 }
+
+func TestDeadlineInterceptorCancels(t *testing.T) {
+	slow := &blockingTransport{}
+	it := WithInterceptors(slow, DeadlineInterceptor(50*time.Millisecond))
+	start := time.Now()
+	_, err := it.Send(context.Background(), Request{URL: "/slow", Method: "POST"})
+	if err == nil {
+		t.Fatal("expected a deadline error")
+	}
+	if time.Since(start) > 500*time.Millisecond {
+		t.Fatalf("did not cancel promptly: %v", time.Since(start))
+	}
+}
+
+type blockingTransport struct{}
+
+func (b *blockingTransport) Send(ctx context.Context, _ Request) (Response, error) {
+	<-ctx.Done()
+	return Response{}, ctx.Err()
+}
+func (b *blockingTransport) OpenStream(ctx context.Context, _ Request) (Stream, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}

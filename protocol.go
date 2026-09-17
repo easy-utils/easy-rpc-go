@@ -480,6 +480,31 @@ const (
 	CompressMinBytes      = 1024
 )
 
+// DeadlineInterceptor attaches the Connect timeout header AND enforces the
+// deadline locally via context, so it works over any adapter that takes a
+// context (all net/http-based ones do).
+func DeadlineInterceptor(d time.Duration) Interceptor {
+	return Interceptor{
+		Unary: func(ctx context.Context, req Request, next func(context.Context, Request) (Response, error)) (Response, error) {
+			if d <= 0 {
+				return next(ctx, req)
+			}
+			c, cancel := context.WithTimeout(ctx, d)
+			defer cancel()
+			return next(c, WithTimeout(req, d))
+		},
+		Stream: func(ctx context.Context, req Request, next func(context.Context, Request) (Stream, error)) (Stream, error) {
+			if d <= 0 {
+				return next(ctx, req)
+			}
+			// The stream's caller owns cancellation; derive the deadline from
+			// the caller's context so it collapses when they cancel.
+			c, _ := context.WithTimeout(ctx, d)
+			return next(c, WithTimeout(req, d))
+		},
+	}
+}
+
 // FrameCompressed wraps a payload in a frame with the Compressed flag set.
 func FrameCompressed(payload []byte) []byte {
 	out := Frame(payload, false)
