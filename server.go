@@ -2,6 +2,7 @@ package easyrpc
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strconv"
 	"strings"
@@ -127,13 +128,40 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 // bytes. The Connect code travels as the `connect-code` header so the client
 // can reconstruct the exact error (the HTTP status alone is lossy).
 func writeError(w ResponseWriter, err *RPCError) error {
+	// Connect unary error: HTTP status + JSON body `{code,message}`. The legacy
+	// connect-code/connect-error headers are kept for backward compatibility.
 	w.Status(HTTPStatus(err.Code))
 	w.Header(Headers{
-		"Content-Type":  []string{"text/plain"},
+		"Content-Type":  []string{"application/json"},
 		"Connect-Code":  []string{strconv.Itoa(err.Code)},
 		"Connect-Error": []string{err.Message},
 	})
-	return w.WriteFrame([]byte(err.Message))
+	return w.WriteFrame(EncodeErrorJSON(err.Code, err.Message))
+}
+
+// EncodeErrorJSON builds a Connect unary error body.
+func EncodeErrorJSON(code int, message string) []byte {
+	b, _ := json.Marshal(struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}{Code: CodeToString(code), Message: message})
+	return b
+}
+
+// DecodeErrorJSON parses a Connect unary error body; (0, "") when not an error
+// body. Tolerates plain-text bodies.
+func DecodeErrorJSON(body []byte) (int, string) {
+	if len(body) == 0 {
+		return 0, ""
+	}
+	var es struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &es); err == nil && es.Code != "" {
+		return CodeFromString(es.Code), es.Message
+	}
+	return 0, ""
 }
 
 func streamContent(ct string) string {

@@ -102,6 +102,8 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 	if resp.StatusCode >= 300 {
 		if e := statusFromHeader(hdrs); e != nil {
 			out.Error = e
+		} else if c, m := DecodeErrorJSON(body); c != 0 {
+			out.Error = &RPCError{Code: c, Message: m}
 		} else {
 			out.Error = &RPCError{Code: ConnectFromStatus(resp.StatusCode), Message: string(body)}
 		}

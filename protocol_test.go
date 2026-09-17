@@ -163,3 +163,16 @@ func (c *captureTransport) Send(_ context.Context, req Request) (Response, error
 	return Response{Status: 200}, nil
 }
 func (c *captureTransport) OpenStream(context.Context, Request) (Stream, error) { return nil, nil }
+
+func TestErrorJSONRoundtrip(t *testing.T) {
+	b := EncodeErrorJSON(7, "denied")
+	if string(b) != `{"code":"permission_denied","message":"denied"}` {
+		t.Fatalf("encode: %s", b)
+	}
+	if c, m := DecodeErrorJSON(b); c != 7 || m != "denied" {
+		t.Fatalf("decode: %d %q", c, m)
+	}
+	if c, _ := DecodeErrorJSON([]byte("plain text")); c != 0 {
+		t.Fatalf("non-json should be 0")
+	}
+}
