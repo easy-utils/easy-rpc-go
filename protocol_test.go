@@ -86,3 +86,46 @@ func TestHTTPStatusMapping(t *testing.T) {
 		t.Fatal("bad status mapping")
 	}
 }
+
+func TestEndStreamErrorJSON(t *testing.T) {
+	enc := EncodeEndStream(EndStreamMessage{Code: 5, Message: "nope"})
+	if string(enc) != `{"error":{"code":"not_found","message":"nope"}}` {
+		t.Fatalf("encode: %s", enc)
+	}
+	m := DecodeEndStream(enc)
+	if m.Code != 5 || m.Message != "nope" {
+		t.Fatalf("decode: %+v", m)
+	}
+	if got := EncodeEndStream(EndStreamMessage{}); len(got) != 0 {
+		t.Fatalf("clean end should be empty, got %q", got)
+	}
+	if m := DecodeEndStream(nil); m.Code != 0 {
+		t.Fatalf("clean decode: %+v", m)
+	}
+}
+
+func TestStreamRecvSurfacesEndError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/stream-fail", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/connect+proto")
+		sw := NewStreamWriter(w)
+		_ = sw.Write([]byte{1})
+		_ = sw.End(16, "missing bearer token")
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	rt := NewNetHTTP(nil)
+	st, err := rt.OpenStream(context.Background(), Request{URL: srv.URL + "/v1/stream-fail", Method: "POST", Body: []byte{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	if _, err := st.Recv(); err != nil {
+		t.Fatal("first frame:", err)
+	}
+	_, err = st.Recv()
+	re, ok := err.(*RPCError)
+	if !ok || re.Code != 16 {
+		t.Fatalf("expected RPCError 16, got %v", err)
+	}
+}

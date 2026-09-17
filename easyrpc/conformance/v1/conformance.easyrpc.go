@@ -14,6 +14,9 @@ func ConformanceService_Methods() []easyrpc.MethodSpec {
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/v1/echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/v1/count", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/v1/fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFail", Path: "/v1/stream-fail", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "EchoMeta", Path: "/v1/echo-meta", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Big", Path: "/v1/big", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
 	}
 }
 
@@ -21,29 +24,54 @@ type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
 func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
-	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)}))
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
 	out := &HealthResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
-	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)}))
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)}))
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)})
 }
 
 func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
-	resp, err := c.rt.Send(ctx, reqWithMd(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)}))
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)})
 	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
 	out := &FailResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) StreamFail(ctx context.Context, in *StreamFailRequest) (easyrpc.Stream, error) {
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/stream-fail", Method: "POST", Body: protoBytes(in)})
+}
+
+func (c *ConformanceServiceClient) EchoMeta(ctx context.Context, in *EchoMetaRequest) (*EchoMetaResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo-meta", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
+	out := &EchoMetaResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) Big(ctx context.Context, in *BigRequest) (*BigResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/big", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
+	out := &BigResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
@@ -53,6 +81,9 @@ type ConformanceServiceService interface {
 	Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error)
 	Count(ctx context.Context, in *CountRequest, emit func(*CountResponse) error) error
 	Fail(ctx context.Context, in *FailRequest) (*FailResponse, error)
+	StreamFail(ctx context.Context, in *StreamFailRequest, emit func(*StreamFailResponse) error) error
+	EchoMeta(ctx context.Context, in *EchoMetaRequest) (*EchoMetaResponse, error)
+	Big(ctx context.Context, in *BigRequest) (*BigResponse, error)
 }
 
 func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.ServiceRegistry {
@@ -83,6 +114,25 @@ func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.
 		if err != nil { return nil, err }
 		return codecBytes(out, kind), nil
 	}
+	reg.Stream["StreamFail"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+		in := &StreamFailRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return err }
+		return impl.StreamFail(ctx, in, func(out *StreamFailResponse) error { return emit(codecBytes(out, kind), false) })
+	}
+	reg.Unary["EchoMeta"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+		in := &EchoMetaRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.EchoMeta(ctx, in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
+	reg.Unary["Big"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+		in := &BigRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.Big(ctx, in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
 	return reg
 }
 
@@ -99,14 +149,5 @@ func decodeIn(req []byte, kind string, m proto.Message) error {
 func codecBytes(m proto.Message, kind string) []byte {
 	if kind == "json" { b, _ := protojson.Marshal(m); return b }
 	b, _ := proto.Marshal(m); return b
-}
-
-func reqWithMd(ctx context.Context, req easyrpc.Request) easyrpc.Request {
-	if md := easyrpc.HeadersFromContext(ctx); md != nil && req.Headers == nil {
-		req.Headers = md
-	} else if md != nil {
-		for k, vs := range md { if _, ok := req.Headers[k]; !ok { req.Headers[k] = vs } }
-	}
-	return req
 }
 
