@@ -143,3 +143,23 @@ func TestTimeoutHelpers(t *testing.T) {
 		t.Fatalf("with timeout header = %q", req.Headers.Get(HeaderTimeout))
 	}
 }
+
+func TestInterceptorTransport(t *testing.T) {
+	var got Headers
+	base := &captureTransport{onSend: func(req Request) { got = req.Headers }}
+	it := WithInterceptors(base, MetadataInterceptor(Headers{"x-test": {"abc"}}), TimeoutInterceptor(250*time.Millisecond))
+	_, _ = it.Send(context.Background(), Request{URL: "/x", Method: "POST"})
+	if got.Get("x-test") != "abc" || got.Get(HeaderTimeout) != "250" {
+		t.Fatalf("interceptors not applied: %+v", got)
+	}
+}
+
+type captureTransport struct{ onSend func(Request) }
+
+func (c *captureTransport) Send(_ context.Context, req Request) (Response, error) {
+	if c.onSend != nil {
+		c.onSend(req)
+	}
+	return Response{Status: 200}, nil
+}
+func (c *captureTransport) OpenStream(context.Context, Request) (Stream, error) { return nil, nil }

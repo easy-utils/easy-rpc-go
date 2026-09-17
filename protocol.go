@@ -76,6 +76,98 @@ func (t *MetadataTransport) augment(req Request) Request {
 	return req
 }
 
+// Interceptor wraps a Transport call. It may mutate the request (attach
+// auth/metadata), impose a deadline, observe the result, or short-circuit.
+// Unary receives (ctx, req); stream receives (ctx, req) and returns a Stream.
+// `next` performs the actual call.
+type Interceptor struct {
+	Unary  func(ctx context.Context, req Request, next func(context.Context, Request) (Response, error)) (Response, error)
+	Stream func(ctx context.Context, req Request, next func(context.Context, Request) (Stream, error)) (Stream, error)
+}
+
+// InterceptorTransport applies interceptors (outermost first) around a Transport.
+type InterceptorTransport struct {
+	ics []Interceptor
+	rt  Transport
+}
+
+// WithInterceptors wraps rt with the given interceptors (first = outermost).
+func WithInterceptors(rt Transport, ics ...Interceptor) *InterceptorTransport {
+	return &InterceptorTransport{ics: ics, rt: rt}
+}
+
+func (t *InterceptorTransport) send(ctx context.Context, i int, req Request) (Response, error) {
+	if i >= len(t.ics) {
+		return t.rt.Send(ctx, req)
+	}
+	ic := t.ics[i]
+	if ic.Unary == nil {
+		return t.send(ctx, i+1, req)
+	}
+	return ic.Unary(ctx, req, func(c context.Context, r Request) (Response, error) {
+		return t.send(c, i+1, r)
+	})
+}
+
+func (t *InterceptorTransport) stream(ctx context.Context, i int, req Request) (Stream, error) {
+	if i >= len(t.ics) {
+		return t.rt.OpenStream(ctx, req)
+	}
+	ic := t.ics[i]
+	if ic.Stream == nil {
+		return t.stream(ctx, i+1, req)
+	}
+	return ic.Stream(ctx, req, func(c context.Context, r Request) (Stream, error) {
+		return t.stream(c, i+1, r)
+	})
+}
+
+// Send implements Transport.
+func (t *InterceptorTransport) Send(ctx context.Context, req Request) (Response, error) {
+	return t.send(ctx, 0, req)
+}
+
+// OpenStream implements Transport.
+func (t *InterceptorTransport) OpenStream(ctx context.Context, req Request) (Stream, error) {
+	return t.stream(ctx, 0, req)
+}
+
+// MetadataInterceptor attaches fixed metadata to every call.
+func MetadataInterceptor(md Headers) Interceptor {
+	aug := func(req Request) Request {
+		if req.Headers == nil {
+			req.Headers = Headers{}
+		}
+		for k, vs := range md {
+			if _, ok := req.Headers[k]; !ok {
+				req.Headers[k] = vs
+			}
+		}
+		return req
+	}
+	return Interceptor{
+		Unary: func(ctx context.Context, req Request, next func(context.Context, Request) (Response, error)) (Response, error) {
+			return next(ctx, aug(req))
+		},
+		Stream: func(ctx context.Context, req Request, next func(context.Context, Request) (Stream, error)) (Stream, error) {
+			return next(ctx, aug(req))
+		},
+	}
+}
+
+// TimeoutInterceptor attaches the Connect timeout header to every call.
+func TimeoutInterceptor(d time.Duration) Interceptor {
+	aug := func(req Request) Request { return WithTimeout(req, d) }
+	return Interceptor{
+		Unary: func(ctx context.Context, req Request, next func(context.Context, Request) (Response, error)) (Response, error) {
+			return next(ctx, aug(req))
+		},
+		Stream: func(ctx context.Context, req Request, next func(context.Context, Request) (Stream, error)) (Stream, error) {
+			return next(ctx, aug(req))
+		},
+	}
+}
+
 // Request is a normalized RPC request independent of any HTTP runtime.
 type Request struct {
 	URL     string
