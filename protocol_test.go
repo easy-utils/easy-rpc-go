@@ -176,3 +176,30 @@ func TestErrorJSONRoundtrip(t *testing.T) {
 		t.Fatalf("non-json should be 0")
 	}
 }
+
+func TestProtocolVersionAndLimit(t *testing.T) {
+	reg := NewServiceRegistry()
+	reg.Unary["Echo"] = func(_ context.Context, req []byte, _ string) ([]byte, error) { return req, nil }
+	methods := []MethodSpec{{Service: "t.T", Name: "Echo", Path: "/t.Echo", HTTPMethod: "POST"}}
+	// bad version -> 12 unimplemented
+	w := &capWriter{}
+	_ = Dispatch(context.Background(), Request{URL: "/t.Echo", Headers: Headers{HeaderProtocolVersion: {"999"}}}, methods, reg, w)
+	if w.status != 501 {
+		t.Fatalf("version status=%d", w.status)
+	}
+	// oversized body -> 8 resource_exhausted (429)
+	w = &capWriter{}
+	_ = Dispatch(context.Background(), Request{URL: "/t.Echo", Body: make([]byte, DefaultMaxMessageBytes+1)}, methods, reg, w)
+	if w.status != 429 {
+		t.Fatalf("size status=%d", w.status)
+	}
+}
+
+type capWriter struct {
+	status int
+	body   []byte
+}
+
+func (c *capWriter) Status(code int)           { c.status = code }
+func (c *capWriter) Header(_ Headers)          {}
+func (c *capWriter) WriteFrame(p []byte) error { c.body = append(c.body, p...); return nil }

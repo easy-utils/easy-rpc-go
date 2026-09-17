@@ -58,6 +58,13 @@ func contentKindHeaders(h Headers) string {
 // by providing a ResponseWriter.
 func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *ServiceRegistry, w ResponseWriter) error {
 	kind := contentKindHeaders(req.Headers)
+	// Protocol version: reject an explicitly-unsupported version.
+	if pv := req.Headers.Get(HeaderProtocolVersion); pv != "" && pv != ConnectProtocolVersion {
+		return writeError(w, &RPCError{Code: 12, Message: "unsupported connect-protocol-version: " + pv})
+	}
+	if len(req.Body) > DefaultMaxMessageBytes {
+		return writeError(w, &RPCError{Code: 8, Message: "request too large"})
+	}
 	path := req.URL
 	if i := strings.IndexByte(path, '?'); i >= 0 {
 		path = path[:i]

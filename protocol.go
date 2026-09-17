@@ -351,8 +351,8 @@ func ReadFrame(r io.Reader) (payload []byte, endStream bool, err error) {
 	}
 	flags := hdr[0]
 	length := binary.BigEndian.Uint32(hdr[1:5])
-	if length > 64*1024*1024 {
-		return nil, false, errors.New("easyrpc: frame too large")
+	if length > DefaultMaxMessageBytes {
+		return nil, false, &RPCError{Code: 8, Message: "frame too large"}
 	}
 	payload = make([]byte, length)
 	if _, err = io.ReadFull(r, payload); err != nil {
@@ -431,6 +431,15 @@ func DecodeEndStream(payload []byte) EndStreamMessage {
 
 // HeaderTimeout is the Connect request-timeout header.
 const HeaderTimeout = "connect-timeout-ms"
+
+// HeaderProtocolVersion is the Connect protocol-version header.
+const HeaderProtocolVersion = "connect-protocol-version"
+
+// ConnectProtocolVersion is the version this package speaks.
+const ConnectProtocolVersion = "1"
+
+// DefaultMaxMessageBytes is the default read/write size cap (Connect default).
+const DefaultMaxMessageBytes = 4 * 1024 * 1024
 
 // ParseTimeout parses the Connect timeout header into a duration (0 = none).
 func ParseTimeout(value string) time.Duration {
