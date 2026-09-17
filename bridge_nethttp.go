@@ -12,9 +12,9 @@ import (
 // Zero value = HTTP/1 + unencrypted HTTP/2 (h2c prior-knowledge). Bridges use
 // Go's http.Protocols so a single client/server can serve h1 + h2 + h2c.
 type ProtocolPrefs struct {
-	HTTP1   bool // HTTP/1.x (default true)
-	HTTP2   bool // HTTP/2 over TLS (ALPN "h2")
-	H2C     bool // unencrypted HTTP/2 (h2c prior knowledge)
+	HTTP1 bool // HTTP/1.x (default true)
+	HTTP2 bool // HTTP/2 over TLS (ALPN "h2")
+	H2C   bool // unencrypted HTTP/2 (h2c prior knowledge)
 	// TLSClientConfig, when set, is used by the client for https:// URLs
 	// (custom CA / client certs / InsecureSkipVerify for self-signed CA).
 	TLSClientConfig *tls.Config
@@ -145,6 +145,10 @@ func (s *httpStream) Recv() ([]byte, error) {
 		return nil, err
 	}
 	if end {
+		// A non-empty END payload is a Connect end-stream error.
+		if m := DecodeEndStream(payload); m.Code != 0 {
+			return nil, &RPCError{Code: m.Code, Message: m.Message}
+		}
 		return nil, io.EOF
 	}
 	return payload, nil
@@ -188,5 +192,3 @@ type NetHTTPStream struct{ *httpStream }
 // NewStream wraps a *http.Response into an easy-rpc Stream (used by optional
 // bridges, e.g. h3, that fetch a *http.Response themselves).
 func NewStream(resp *http.Response) Stream { return &httpStream{resp: resp, body: resp.Body} }
-
-

@@ -5,9 +5,9 @@
 package easyrpc
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -96,7 +96,7 @@ type Response struct {
 
 // RPCError is the wire-level error with a Connect code.
 type RPCError struct {
-	Code    int    // Connect code (3 invalid, 5 notfound, ...)
+	Code    int // Connect code (3 invalid, 5 notfound, ...)
 	Message string
 }
 
@@ -268,33 +268,72 @@ func ReadFrame(r io.Reader) (payload []byte, endStream bool, err error) {
 	return payload, flags&0x02 != 0, nil
 }
 
-// EndStreamMessage is a minimal trailer frame payload used to signal end.
+// EndStreamMessage is the Connect end-stream payload. A clean end carries
+// Code == 0; a failure carries the Connect code + message. It serializes as
+// `{"error":{"code":"<name>","message":"..."}}` (see the Connect protocol).
 type EndStreamMessage struct {
 	Code    int
 	Message string
 }
 
-// EncodeEndStream encodes an EndStreamMessage as a frame payload.
-func EncodeEndStream(m EndStreamMessage) []byte {
-	var b bytes.Buffer
-	b.WriteByte(byte(m.Code))
-	b.WriteString("\x00")
-	b.WriteString(m.Message)
-	return b.Bytes()
+// CodeNames maps Connect codes to their stable lowercase wire names.
+var CodeNames = map[int]string{
+	0: "ok", 1: "canceled", 2: "unknown", 3: "invalid_argument",
+	4: "deadline_exceeded", 5: "not_found", 6: "already_exists",
+	7: "permission_denied", 8: "resource_exhausted", 9: "failed_precondition",
+	10: "aborted", 11: "out_of_range", 12: "unimplemented", 13: "internal",
+	14: "unavailable", 15: "data_loss", 16: "unauthenticated",
 }
 
-// DecodeEndStream decodes an EndStreamMessage payload.
+// CodeToString returns the stable lowercase name for a Connect code.
+func CodeToString(code int) string {
+	if s, ok := CodeNames[code]; ok {
+		return s
+	}
+	return "unknown"
+}
+
+// CodeFromString maps a wire code name back to its Connect code (unknown -> 2).
+func CodeFromString(name string) int {
+	for c, s := range CodeNames {
+		if s == name {
+			return c
+		}
+	}
+	return 2
+}
+
+type endStreamJSON struct {
+	Error *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+// EncodeEndStream encodes an EndStreamMessage as a Connect end-stream payload.
+func EncodeEndStream(m EndStreamMessage) []byte {
+	if m.Code == 0 {
+		return nil
+	}
+	var es endStreamJSON
+	es.Error = &struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}{Code: CodeToString(m.Code), Message: m.Message}
+	b, _ := json.Marshal(es)
+	return b
+}
+
+// DecodeEndStream decodes a Connect end-stream payload (empty => clean end).
 func DecodeEndStream(payload []byte) EndStreamMessage {
 	if len(payload) == 0 {
 		return EndStreamMessage{}
 	}
-	code := int(payload[0])
-	rest := payload[1:]
-	msg := string(rest)
-	if idx := bytes.IndexByte(rest, 0); idx >= 0 {
-		msg = string(rest[idx+1:])
+	var es endStreamJSON
+	if err := json.Unmarshal(payload, &es); err != nil || es.Error == nil {
+		return EndStreamMessage{}
 	}
-	return EndStreamMessage{Code: code, Message: msg}
+	return EndStreamMessage{Code: CodeFromString(es.Error.Code), Message: es.Error.Message}
 }
 
 // URLFor builds the default gRPC-style path for a method.
@@ -304,13 +343,13 @@ func URLFor(pkg, service, method string) string {
 
 // MethodSpec describes a generated RPC method (mirrors what generators emit).
 type MethodSpec struct {
-	Service        string // e.g. "easyrpc.conformance.v1.ConformanceService"
-	Name           string // e.g. "Echo"
-	Path           string // resolved HTTP path (REST or gRPC style)
-	HTTPMethod     string // GET / POST
-	ClientStream   bool
-	ServerStream   bool
-	Body           string // body binding ("*" or field name) for REST
+	Service      string // e.g. "easyrpc.conformance.v1.ConformanceService"
+	Name         string // e.g. "Echo"
+	Path         string // resolved HTTP path (REST or gRPC style)
+	HTTPMethod   string // GET / POST
+	ClientStream bool
+	ServerStream bool
+	Body         string // body binding ("*" or field name) for REST
 }
 
 // ServiceDesc is the runtime descriptor for a generated service.
