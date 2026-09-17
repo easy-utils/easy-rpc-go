@@ -59,6 +59,31 @@ func (impl) Big(c context.Context, in *cv1.BigRequest) (*cv1.BigResponse, error)
 	return &cv1.BigResponse{Size: in.Size}, nil
 }
 
+// FailDetails fails the unary call with an error carrying structured details
+// (spec §4.1): {type: detail_type, value: utf8(detail_text)}.
+func (impl) FailDetails(c context.Context, in *cv1.FailDetailsRequest) (*cv1.FailDetailsResponse, error) {
+	return &cv1.FailDetailsResponse{Ok: false}, &easyrpc.RPCError{
+		Code:    int(in.Code),
+		Message: in.Message,
+		Details: []easyrpc.ErrorDetail{{Type: in.DetailType, Value: []byte(in.DetailText)}},
+	}
+}
+
+// StreamFailDetails emits `emit_before` frames, then ends the stream with an
+// error carrying structured details (spec §4.1).
+func (impl) StreamFailDetails(c context.Context, in *cv1.StreamFailDetailsRequest, emit func(*cv1.StreamFailDetailsResponse) error) error {
+	for i := int32(0); i < in.EmitBefore; i++ {
+		if err := emit(&cv1.StreamFailDetailsResponse{Index: i}); err != nil {
+			return err
+		}
+	}
+	return &easyrpc.RPCError{
+		Code:    int(in.Code),
+		Message: in.Message,
+		Details: []easyrpc.ErrorDetail{{Type: in.DetailType, Value: []byte(in.DetailText)}},
+	}
+}
+
 func port() string {
 	p := os.Getenv("PORT")
 	if p == "" {

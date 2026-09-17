@@ -101,9 +101,18 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 	// status alone is lossy — several Connect codes share a status).
 	if resp.StatusCode >= 300 {
 		if e := statusFromHeader(hdrs); e != nil {
+			// The header carries the exact code; the JSON body (when present)
+			// may still carry details — merge them (details never travel in
+			// headers).
+			if _, m, ds := DecodeErrorJSON(body); len(ds) > 0 {
+				e.Details = ds
+				if e.Message == "" {
+					e.Message = m
+				}
+			}
 			out.Error = e
-		} else if c, m := DecodeErrorJSON(body); c != 0 {
-			out.Error = &RPCError{Code: c, Message: m}
+		} else if c, m, ds := DecodeErrorJSON(body); c != 0 {
+			out.Error = &RPCError{Code: c, Message: m, Details: ds}
 		} else {
 			out.Error = &RPCError{Code: ConnectFromStatus(resp.StatusCode), Message: string(body)}
 		}
@@ -150,7 +159,7 @@ func (s *httpStream) Recv() ([]byte, error) {
 	if end {
 		// A non-empty END payload is a Connect end-stream error.
 		if m := DecodeEndStream(payload); m.Code != 0 {
-			return nil, &RPCError{Code: m.Code, Message: m.Message}
+			return nil, &RPCError{Code: m.Code, Message: m.Message, Details: m.Details}
 		}
 		return nil, io.EOF
 	}

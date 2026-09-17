@@ -17,6 +17,8 @@ func ConformanceService_Methods() []easyrpc.MethodSpec {
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFail", Path: "/v1/stream-fail", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "EchoMeta", Path: "/v1/echo-meta", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
 		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Big", Path: "/v1/big", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "FailDetails", Path: "/v1/fail-details", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFailDetails", Path: "/v1/stream-fail-details", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
 	}
 }
 
@@ -76,6 +78,19 @@ func (c *ConformanceServiceClient) Big(ctx context.Context, in *BigRequest) (*Bi
 	return out, nil
 }
 
+func (c *ConformanceServiceClient) FailDetails(ctx context.Context, in *FailDetailsRequest) (*FailDetailsResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail-details", Method: "POST", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	if resp.Error != nil { return nil, resp.Error }
+	out := &FailDetailsResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest) (easyrpc.Stream, error) {
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/stream-fail-details", Method: "POST", Body: protoBytes(in)})
+}
+
 type ConformanceServiceService interface {
 	Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error)
 	Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error)
@@ -84,6 +99,8 @@ type ConformanceServiceService interface {
 	StreamFail(ctx context.Context, in *StreamFailRequest, emit func(*StreamFailResponse) error) error
 	EchoMeta(ctx context.Context, in *EchoMetaRequest) (*EchoMetaResponse, error)
 	Big(ctx context.Context, in *BigRequest) (*BigResponse, error)
+	FailDetails(ctx context.Context, in *FailDetailsRequest) (*FailDetailsResponse, error)
+	StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest, emit func(*StreamFailDetailsResponse) error) error
 }
 
 func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.ServiceRegistry {
@@ -132,6 +149,18 @@ func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.
 		out, err := impl.Big(ctx, in)
 		if err != nil { return nil, err }
 		return codecBytes(out, kind), nil
+	}
+	reg.Unary["FailDetails"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+		in := &FailDetailsRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		out, err := impl.FailDetails(ctx, in)
+		if err != nil { return nil, err }
+		return codecBytes(out, kind), nil
+	}
+	reg.Stream["StreamFailDetails"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+		in := &StreamFailDetailsRequest{}
+		if err := decodeIn(req, kind, in); err != nil { return err }
+		return impl.StreamFailDetails(ctx, in, func(out *StreamFailDetailsResponse) error { return emit(codecBytes(out, kind), false) })
 	}
 	return reg
 }

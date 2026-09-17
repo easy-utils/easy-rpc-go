@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -21,7 +22,7 @@ import (
 )
 
 // Version is the easy-rpc Go core version.
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 // Headers is a generic multi-value header map.
 type Headers map[string][]string
@@ -193,10 +194,20 @@ type Response struct {
 	Error *RPCError
 }
 
+// ErrorDetail is one structured error detail (spec §4.1, aligned with Connect
+// Error Details / gRPC google.rpc status details). Type is a type URL; Value
+// is opaque bytes (typically an encoded protobuf message).
+type ErrorDetail struct {
+	Type  string `json:"type"`
+	Value []byte `json:"value,omitempty"`
+}
+
 // RPCError is the wire-level error with a Connect code.
 type RPCError struct {
 	Code    int // Connect code (3 invalid, 5 notfound, ...)
 	Message string
+	// Optional structured details (spec §4.1); opaque to the wire layer.
+	Details []ErrorDetail
 }
 
 func (e *RPCError) Error() string { return fmt.Sprintf("easyrpc: code=%d %s", e.Code, e.Message) }
@@ -373,6 +384,8 @@ func ReadFrame(r io.Reader) (payload []byte, endStream bool, err error) {
 type EndStreamMessage struct {
 	Code    int
 	Message string
+	// Optional structured details carried in the end-stream JSON (spec §4.1).
+	Details []ErrorDetail
 }
 
 // CodeNames maps Connect codes to their stable lowercase wire names.
@@ -404,26 +417,70 @@ func CodeFromString(name string) int {
 
 type endStreamJSON struct {
 	Error *struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Code    string       `json:"code"`
+		Message string       `json:"message"`
+		Details []wireDetail `json:"details,omitempty"`
 	} `json:"error,omitempty"`
+}
+
+// wireDetail is the JSON shape of one detail: {type, base64 value}.
+type wireDetail struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+func encodeWireDetails(details []ErrorDetail) []wireDetail {
+	if len(details) == 0 {
+		return nil
+	}
+	out := make([]wireDetail, 0, len(details))
+	for _, d := range details {
+		out = append(out, wireDetail{Type: d.Type, Value: base64.StdEncoding.EncodeToString(d.Value)})
+	}
+	return out
+}
+
+// decodeWireDetails parses the JSON details array; malformed entries (bad
+// base64, missing type) are skipped, never fatal (matrix M7).
+func decodeWireDetails(v []wireDetail) []ErrorDetail {
+	out := make([]ErrorDetail, 0, len(v))
+	for _, d := range v {
+		if d.Type == "" || d.Value == "" {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(d.Value)
+		if err != nil {
+			continue
+		}
+		out = append(out, ErrorDetail{Type: d.Type, Value: raw})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // EncodeEndStream encodes an EndStreamMessage as a Connect end-stream payload.
 func EncodeEndStream(m EndStreamMessage) []byte {
-	if m.Code == 0 {
+	if m.Code == 0 && len(m.Details) == 0 {
 		return nil
 	}
 	var es endStreamJSON
 	es.Error = &struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}{Code: CodeToString(m.Code), Message: m.Message}
+		Code    string       `json:"code"`
+		Message string       `json:"message"`
+		Details []wireDetail `json:"details,omitempty"`
+	}{Code: CodeToString(m.Code), Message: m.Message, Details: encodeWireDetails(m.Details)}
+	if m.Code == 0 {
+		// Details without an error code are not representable on the wire.
+		es.Error.Code = CodeToString(2)
+	}
 	b, _ := json.Marshal(es)
 	return b
 }
 
 // DecodeEndStream decodes a Connect end-stream payload (empty => clean end).
+// Malformed input decodes to the zero value (clean end, matrix M2).
 func DecodeEndStream(payload []byte) EndStreamMessage {
 	if len(payload) == 0 {
 		return EndStreamMessage{}
@@ -432,7 +489,11 @@ func DecodeEndStream(payload []byte) EndStreamMessage {
 	if err := json.Unmarshal(payload, &es); err != nil || es.Error == nil {
 		return EndStreamMessage{}
 	}
-	return EndStreamMessage{Code: CodeFromString(es.Error.Code), Message: es.Error.Message}
+	code := 2
+	if es.Error.Code != "" {
+		code = CodeFromString(es.Error.Code)
+	}
+	return EndStreamMessage{Code: code, Message: es.Error.Message, Details: decodeWireDetails(es.Error.Details)}
 }
 
 // HeaderTimeout is the Connect request-timeout header.
@@ -498,11 +559,33 @@ func DeadlineInterceptor(d time.Duration) Interceptor {
 				return next(ctx, req)
 			}
 			// The stream's caller owns cancellation; derive the deadline from
-			// the caller's context so it collapses when they cancel.
-			c, _ := context.WithTimeout(ctx, d)
-			return next(c, WithTimeout(req, d))
+			// the caller's context so it collapses when they cancel. The
+			// deadline context is released when the stream closes.
+			c, cancel := context.WithTimeout(ctx, d)
+			st, err := next(c, WithTimeout(req, d))
+			if err != nil {
+				cancel()
+				return nil, err
+			}
+			return cancelOnClose{st, cancel}, nil
 		},
 	}
+}
+
+// cancelOnClose releases the deadline context when the stream is closed.
+type cancelOnClose struct {
+	Stream
+	cancel context.CancelFunc
+}
+
+func (c cancelOnClose) Close() error {
+	c.cancel()
+	return c.Stream.Close()
+}
+
+func (c cancelOnClose) Cancel() {
+	c.cancel()
+	c.Stream.Cancel()
 }
 
 // FrameCompressed wraps a payload in a frame with the Compressed flag set.

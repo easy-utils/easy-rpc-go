@@ -121,7 +121,7 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 			re := asRPCError(err)
 			if !ended {
 				ended = true
-				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message}), true))
+				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message, Details: re.Details}), true))
 			}
 			return nil
 		}
@@ -156,32 +156,36 @@ func writeError(w ResponseWriter, err *RPCError) error {
 		"Connect-Code":  []string{strconv.Itoa(err.Code)},
 		"Connect-Error": []string{err.Message},
 	})
-	return w.WriteFrame(EncodeErrorJSON(err.Code, err.Message))
+	return w.WriteFrame(EncodeErrorJSON(err.Code, err.Message, err.Details))
 }
 
-// EncodeErrorJSON builds a Connect unary error body.
-func EncodeErrorJSON(code int, message string) []byte {
-	b, _ := json.Marshal(struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}{Code: CodeToString(code), Message: message})
+// EncodeErrorJSON builds a Connect unary error body (details omitted when
+// empty, keeping the v1.0 byte-for-byte shape).
+func EncodeErrorJSON(code int, message string, details []ErrorDetail) []byte {
+	body := struct {
+		Code    string       `json:"code"`
+		Message string       `json:"message"`
+		Details []wireDetail `json:"details,omitempty"`
+	}{Code: CodeToString(code), Message: message, Details: encodeWireDetails(details)}
+	b, _ := json.Marshal(body)
 	return b
 }
 
 // DecodeErrorJSON parses a Connect unary error body; (0, "") when not an error
 // body. Tolerates plain-text bodies.
-func DecodeErrorJSON(body []byte) (int, string) {
+func DecodeErrorJSON(body []byte) (int, string, []ErrorDetail) {
 	if len(body) == 0 {
-		return 0, ""
+		return 0, "", nil
 	}
 	var es struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Code    string       `json:"code"`
+		Message string       `json:"message"`
+		Details []wireDetail `json:"details"`
 	}
 	if err := json.Unmarshal(body, &es); err == nil && es.Code != "" {
-		return CodeFromString(es.Code), es.Message
+		return CodeFromString(es.Code), es.Message, decodeWireDetails(es.Details)
 	}
-	return 0, ""
+	return 0, "", nil
 }
 
 func streamContent(ct string) string {
