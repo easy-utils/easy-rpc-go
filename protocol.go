@@ -20,6 +20,9 @@ import (
 	"time"
 )
 
+// Version is the easy-rpc Go core version.
+const Version = "0.3.0"
+
 // Headers is a generic multi-value header map.
 type Headers map[string][]string
 
