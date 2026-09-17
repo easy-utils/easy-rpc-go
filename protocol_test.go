@@ -203,3 +203,32 @@ type capWriter struct {
 func (c *capWriter) Status(code int)           { c.status = code }
 func (c *capWriter) Header(_ Headers)          {}
 func (c *capWriter) WriteFrame(p []byte) error { c.body = append(c.body, p...); return nil }
+
+func TestGzipRoundtrip(t *testing.T) {
+	orig := make([]byte, 4096)
+	for i := range orig {
+		orig[i] = byte(i % 251)
+	}
+	z, err := GzipCompress(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(z) >= len(orig) {
+		t.Fatalf("did not compress: %d vs %d", len(z), len(orig))
+	}
+	back, err := GzipDecompress(z)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(back, orig) {
+		t.Fatal("roundtrip mismatch")
+	}
+	fr := FrameCompressed(orig)
+	if fr[0]&0x01 == 0 {
+		t.Fatal("compressed flag not set")
+	}
+	out, end, err := ReadFrameDecompressed(bytes.NewReader(fr))
+	if err != nil || end || !bytes.Equal(out, orig) {
+		t.Fatalf("read: %v end=%v", err, end)
+	}
+}

@@ -5,6 +5,8 @@
 package easyrpc
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -464,6 +466,57 @@ func WithTimeout(req Request, d time.Duration) Request {
 	}
 	req.Headers.Set(HeaderTimeout, strconv.FormatInt(d.Milliseconds(), 10))
 	return req
+}
+
+// Compression headers.
+const (
+	HeaderAcceptEncoding  = "connect-accept-encoding"
+	HeaderContentEncoding = "connect-content-encoding"
+	EncodingGzip          = "gzip"
+	CompressMinBytes      = 1024
+)
+
+// FrameCompressed wraps a payload in a frame with the Compressed flag set.
+func FrameCompressed(payload []byte) []byte {
+	out := Frame(payload, false)
+	out[0] |= 0x01
+	return out
+}
+
+// ReadFrameDecompressed reads one frame and gzip-decompresses it when the
+// Compressed flag is set.
+func ReadFrameDecompressed(r io.Reader) (payload []byte, endStream bool, err error) {
+	payload, end, err := ReadFrame(r)
+	if err != nil {
+		return nil, false, err
+	}
+	if z, derr := GzipDecompress(payload); derr == nil {
+		payload = z
+	}
+	return payload, end, nil
+}
+
+// GzipCompress gzip-compresses data.
+func GzipCompress(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	if _, err := w.Write(data); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// GzipDecompress gzip-decompresses data.
+func GzipDecompress(data []byte) ([]byte, error) {
+	r, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return io.ReadAll(r)
 }
 
 // URLFor builds the default gRPC-style path for a method.

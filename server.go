@@ -93,6 +93,14 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		// the END frame, never an HTTP status.
 		w.Status(200)
 		w.Header(Headers{"Content-Type": []string{streamContent(ct)}})
+		wantsGzip := false
+		for _, v := range req.Headers[HeaderAcceptEncoding] {
+			for _, e := range strings.Split(v, ",") {
+				if strings.TrimSpace(e) == EncodingGzip {
+					wantsGzip = true
+				}
+			}
+		}
 		var ended bool
 		emit := func(p []byte, end bool) error {
 			if ended {
@@ -101,6 +109,11 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 			if end {
 				ended = true
 				return w.WriteFrame(Frame(nil, true))
+			}
+			if wantsGzip && len(p) >= CompressMinBytes {
+				if z, err := GzipCompress(p); err == nil {
+					return w.WriteFrame(FrameCompressed(z))
+				}
 			}
 			return w.WriteFrame(Frame(p, false))
 		}

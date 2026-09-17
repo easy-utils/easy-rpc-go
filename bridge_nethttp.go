@@ -119,6 +119,7 @@ func (b *NetHTTP) OpenStream(ctx context.Context, req Request) (Stream, error) {
 	}
 	httpReq.Header = httpHeader(req.Headers)
 	httpReq.Header.Set("Content-Type", "application/connect+proto")
+	httpReq.Header.Set("Connect-Accept-Encoding", "gzip")
 
 	resp, err := b.client.Do(httpReq)
 	if err != nil {
@@ -139,7 +140,7 @@ type httpStream struct {
 }
 
 func (s *httpStream) Recv() ([]byte, error) {
-	payload, end, err := ReadFrame(s.body)
+	payload, end, err := ReadFrameDecompressed(s.body)
 	if err != nil {
 		if err == io.EOF {
 			return nil, io.EOF
