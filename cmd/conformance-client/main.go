@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 
 	"google.golang.org/protobuf/proto"
 
@@ -149,12 +150,62 @@ func main() {
 		os.Exit(1)
 	}
 
+	// ---- trailing metadata (spec §3.3) ----
+	et, err := c.EchoTrailer(ctx, &cv1.EchoTrailerRequest{Input: "x"})
+	if err != nil {
+		fmt.Println("ECHOTRAILER_FAIL", err)
+		os.Exit(1)
+	}
+	if et.Output != "trailer:x" {
+		fmt.Println("ECHOTRAILER_WRONG", et.Output)
+		os.Exit(1)
+	}
+	if got := rt.LastTrailers()["x-trl"]; len(got) != 1 || got[0] != "unary-x" {
+		fmt.Println("ECHOTRAILER_TRAILER_WRONG", got)
+		os.Exit(1)
+	}
+	ct, err := c.CountTrailer(ctx, &cv1.CountTrailerRequest{Count: 2})
+	if err != nil {
+		fmt.Println("COUNTRAILER_FAIL", err)
+		os.Exit(1)
+	}
+	var ctIdx []int32
+	for {
+		p, err := ct.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println("COUNTRAILER_RECV_FAIL", err)
+			os.Exit(1)
+		}
+		var r cv1.CountTrailerResponse
+		_ = proto.Unmarshal(p, &r)
+		ctIdx = append(ctIdx, r.Index)
+	}
+	if len(ctIdx) != 2 {
+		fmt.Println("COUNTRAILER_WRONG", ctIdx)
+		os.Exit(1)
+	}
+	if got := ct.Trailers()["x-ctrailer"]; len(got) != 1 || got[0] != "done" {
+		fmt.Println("COUNTRAILER_TRAILER_WRONG", got)
+		os.Exit(1)
+	}
+
 	fmt.Println("GO_CLIENT_OK", string(realm))
 }
 
 type baseTransport struct {
-	rt   easyrpc.Transport
-	base string
+	rt     easyrpc.Transport
+	base   string
+	mu     sync.Mutex
+	trails map[string][]string
+}
+
+func (b *baseTransport) LastTrailers() map[string][]string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.trails
 }
 
 func (b *baseTransport) prepend(u string) string {
@@ -165,7 +216,13 @@ func (b *baseTransport) prepend(u string) string {
 }
 func (b *baseTransport) Send(ctx context.Context, req easyrpc.Request) (easyrpc.Response, error) {
 	req.URL = b.prepend(req.URL)
-	return b.rt.Send(ctx, req)
+	res, err := b.rt.Send(ctx, req)
+	if err == nil {
+		b.mu.Lock()
+		b.trails = res.Trailers
+		b.mu.Unlock()
+	}
+	return res, err
 }
 func (b *baseTransport) OpenStream(ctx context.Context, req easyrpc.Request) (easyrpc.Stream, error) {
 	req.URL = b.prepend(req.URL)
