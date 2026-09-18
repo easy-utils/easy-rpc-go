@@ -127,7 +127,9 @@ func (b *NetHTTP) OpenStream(ctx context.Context, req Request) (Stream, error) {
 		return nil, err
 	}
 	httpReq.Header = httpHeader(req.Headers)
-	httpReq.Header.Set("Content-Type", "application/connect+proto")
+	if httpReq.Header.Get("Content-Type") == "" {
+		httpReq.Header.Set("Content-Type", "application/connect+proto")
+	}
 	httpReq.Header.Set("Connect-Accept-Encoding", "gzip")
 
 	resp, err := b.client.Do(httpReq)
