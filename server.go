@@ -59,6 +59,10 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	if len(req.Body) > DefaultMaxMessageBytes {
 		return writeError(w, &RPCError{Code: 8, Message: "request too large"})
 	}
+	// POST-only (spec §0): non-POST on any path is 405.
+	if m := req.Headers.Get(":method"); m != "" && m != "POST" {
+		return writeErrorStatus(w, &RPCError{Code: 2, Message: "method " + m + " not allowed"}, 405)
+	}
 	path := req.URL
 	if i := strings.IndexByte(path, '?'); i >= 0 {
 		path = path[:i]
@@ -72,7 +76,7 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		}
 	}
 	if spec == nil {
-		return writeError(w, &RPCError{Code: 5, Message: "not found"})
+		return writeErrorStatus(w, &RPCError{Code: 12, Message: "unimplemented"}, 404)
 	}
 
 	// proto-only content type check (spec §2).
@@ -82,7 +86,19 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	}
 	gotCT := strings.TrimSpace(strings.ToLower(strings.SplitN(req.Headers.Get("Content-Type"), ";", 2)[0]))
 	if gotCT != wantCT {
-		return writeErrorStatus(w, &RPCError{Code: 3, Message: "unsupported content-type: expected " + wantCT}, 415)
+		return writeErrorStatus(w, &RPCError{Code: 2, Message: "unsupported content-type: " + gotCT}, 415)
+	}
+	// Request compression: unary uses `Content-Encoding`, server-stream uses
+	// `Connect-Content-Encoding`. Unknown encodings -> 12 (unimplemented).
+	reqEnc := strings.TrimSpace(strings.ToLower(req.Headers.Get("content-encoding")))
+	if reqEnc == "" {
+		reqEnc = strings.TrimSpace(strings.ToLower(req.Headers.Get(HeaderContentEncoding)))
+	}
+	if reqEnc == "identity" {
+		reqEnc = ""
+	}
+	if reqEnc != "" && reqEnc != EncodingGzip {
+		return writeError(w, &RPCError{Code: 12, Message: "unsupported content-encoding: " + reqEnc})
 	}
 
 	// Per-RPC metadata + trailer channel.
@@ -100,18 +116,29 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	if spec.ServerStream {
 		h := reg.Stream[spec.Name]
 		if h == nil {
-			return writeError(w, &RPCError{Code: 5, Message: "method not found"})
+			return streamFail(w, &RPCError{Code: 12, Message: "method not implemented"}, hc)
 		}
-		// Stream request body is ENVELOPED: one data frame carrying the single
-		// request message (Connect spec). Unframe before dispatch.
+		// A server-stream request MUST carry exactly one enveloped message.
+		n, cerr := countFrames(req.Body)
+		if cerr != nil {
+			return streamFail(w, cerr, hc)
+		}
+		if n != 1 {
+			msg := "server-stream request must contain exactly one message"
+			if n == 0 {
+				msg = "missing request message"
+			}
+			return streamFail(w, &RPCError{Code: 12, Message: msg}, hc)
+		}
 		reqBody, ferr := readSingleFrame(req.Body)
 		if ferr != nil {
-			return writeError(w, ferr)
+			return streamFail(w, ferr, hc)
 		}
 		// Connect semantics: a server-stream is always HTTP 200; failures ride
-		// the END frame, never an HTTP status.
+		// the END frame, never an HTTP status. Response headers set by the
+		// handler are applied lazily (on the first emit) so late SetHeader
+		// calls are not lost.
 		w.Status(200)
-		w.Header(Headers{"Content-Type": []string{ContentTypeStream}})
 		wantsGzip := false
 		for _, v := range req.Headers[HeaderAcceptEncoding] {
 			for _, e := range strings.Split(v, ",") {
@@ -121,10 +148,19 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 			}
 		}
 		var ended bool
+		headersApplied := false
+		applyOnce := func() {
+			if headersApplied {
+				return
+			}
+			headersApplied = true
+			w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeStream}}, hc.ResponseHeaders()))
+		}
 		emit := func(p []byte, end bool) error {
 			if ended {
 				return nil
 			}
+			applyOnce()
 			if end {
 				ended = true
 				return w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Metadata: hc.Trailers()}), true))
@@ -138,12 +174,14 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		}
 		if err := h(ctx, reqBody, emit); err != nil {
 			re := asRPCError(err)
+			applyOnce()
 			if !ended {
 				ended = true
 				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message, Details: re.Details, Metadata: hc.Trailers()}), true))
 			}
 			return nil
 		}
+		applyOnce()
 		if !ended {
 			_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Metadata: hc.Trailers()}), true))
 		}
@@ -155,25 +193,69 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		return writeError(w, &RPCError{Code: 5, Message: "method not found"})
 	}
 	// Unary: resolve fully before writing so a failure can set a real status.
-	resp, err := h(ctx, req.Body)
+	inBody := req.Body
+	if reqEnc == EncodingGzip && len(inBody) > 0 {
+		z, zerr := GzipDecompress(inBody)
+		if zerr != nil {
+			return writeError(w, &RPCError{Code: 13, Message: "corrupt request gzip: " + zerr.Error()})
+		}
+		inBody = z
+	}
+	resp, err := h(ctx, inBody)
 	if err != nil {
 		re := asRPCError(err)
-		w.Header(MuxTrailers(Headers{"Content-Type": []string{"application/json"}}, hc.Trailers()))
+		hdr := mergeHeaders(Headers{"Content-Type": []string{"application/json"}}, hc.ResponseHeaders())
+		w.Header(MuxTrailers(hdr, hc.Trailers()))
 		w.Status(HTTPStatus(re.Code))
-		_ = w.WriteFrame(EncodeErrorJSON(re.Code, re.Message, re.Details))
-		return nil
+		return w.WriteFrame(EncodeErrorJSON(re.Code, re.Message, re.Details))
 	}
 	// Unary gzip (spec §3.5): compress when the client accepts gzip.
 	if acceptsGzip(req.Headers[HeaderAcceptEncoding]) && len(resp) >= CompressMinBytes {
 		if z, zerr := GzipCompress(resp); zerr == nil {
-			w.Header(MuxTrailers(Headers{"Content-Type": []string{ContentTypeUnary}, "Content-Encoding": []string{EncodingGzip}}, hc.Trailers()))
+			w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeUnary}, "Content-Encoding": []string{EncodingGzip}}, hc.ResponseHeaders()), hc.Trailers()))
 			w.Status(200)
 			return w.WriteFrame(z)
 		}
 	}
 	w.Status(200)
-	w.Header(MuxTrailers(Headers{"Content-Type": []string{ContentTypeUnary}}, hc.Trailers()))
+	w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeUnary}}, hc.ResponseHeaders()), hc.Trailers()))
 	return w.WriteFrame(resp)
+}
+
+// mergeHeaders overlays extra response headers (multi-value aware).
+func mergeHeaders(base, extra Headers) Headers {
+	out := Headers{}
+	for k, v := range base {
+		out[k] = append([]string{}, v...)
+	}
+	for k, v := range extra {
+		out[k] = append(out[k], v...)
+	}
+	return out
+}
+
+// countFrames counts the streaming frames in an enveloped request body.
+func countFrames(body []byte) (int, *RPCError) {
+	off, n := 0, 0
+	for off < len(body) {
+		if off+5 > len(body) {
+			return 0, &RPCError{Code: 13, Message: "truncated frame header"}
+		}
+		length := int(binary.BigEndian.Uint32(body[off+1 : off+5]))
+		if length > DefaultMaxMessageBytes {
+			return 0, &RPCError{Code: 8, Message: "frame too large"}
+		}
+		off += 5 + length
+		n++
+	}
+	return n, nil
+}
+
+// streamFail emits a server-stream failure as HTTP 200 + an END-frame error.
+func streamFail(w ResponseWriter, err *RPCError, hc *HandlerContext) error {
+	w.Status(200)
+	w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeStream}}, hc.ResponseHeaders()))
+	return w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: err.Code, Message: err.Message, Details: err.Details, Metadata: hc.Trailers()}), true))
 }
 
 func acceptsGzip(vals []string) bool {

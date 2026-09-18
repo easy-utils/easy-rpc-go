@@ -35,7 +35,7 @@ func (h *httpWriter) Header(hdrs easyrpc.Headers) {
 		h.headers = easyrpc.Headers{}
 	}
 	for k, vs := range hdrs {
-		h.headers[k] = vs
+		h.headers[k] = append(h.headers[k], vs...)
 	}
 }
 
@@ -84,6 +84,7 @@ func ServeNetHTTP(methods []easyrpc.MethodSpec, reg *easyrpc.ServiceRegistry) ht
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		hdrs := easyrpc.GoHeaders(r.Header)
+		hdrs.Set(":method", r.Method)
 		req := easyrpc.Request{
 			URL:     r.URL.Path,
 			Headers: hdrs,

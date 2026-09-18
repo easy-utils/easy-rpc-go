@@ -441,9 +441,17 @@ func encodeWireDetails(details []ErrorDetail) []wireDetail {
 	}
 	out := make([]wireDetail, 0, len(details))
 	for _, d := range details {
-		out = append(out, wireDetail{Type: d.Type, Value: base64.StdEncoding.EncodeToString(d.Value)})
+		out = append(out, wireDetail{Type: d.Type, Value: base64.RawStdEncoding.EncodeToString(d.Value)})
 	}
 	return out
+}
+
+// decodeWireBase64 accepts standard OR URL-safe base64, padded or unpadded
+// (Connect emits unpadded RawStdEncoding).
+func decodeWireBase64(v string) ([]byte, error) {
+	v = strings.TrimRight(v, "=")
+	v = strings.NewReplacer("-", "+", "_", "/").Replace(v)
+	return base64.RawStdEncoding.DecodeString(v)
 }
 
 // decodeWireDetails parses the JSON details array; malformed entries (bad
@@ -454,7 +462,7 @@ func decodeWireDetails(v []wireDetail) []ErrorDetail {
 		if d.Type == "" || d.Value == "" {
 			continue
 		}
-		raw, err := base64.StdEncoding.DecodeString(d.Value)
+		raw, err := decodeWireBase64(d.Value)
 		if err != nil {
 			continue
 		}
@@ -720,13 +728,26 @@ func DemuxTrailers(all Headers) (Headers, Headers) {
 // service interface keeps its plain (ctx, in) signature.
 type HandlerContext struct {
 	Headers Headers
+	header  Headers
 	trailer Headers
 }
 
 // NewHandlerContext builds a context carrying request metadata.
 func NewHandlerContext(headers Headers) *HandlerContext {
-	return &HandlerContext{Headers: headers, trailer: Headers{}}
+	return &HandlerContext{Headers: headers, header: Headers{}, trailer: Headers{}}
 }
+
+// SetHeader records a response header (non-trailer). Emitted on both unary and
+// server-stream responses; repeated calls accumulate multiple wire values.
+func (c *HandlerContext) SetHeader(key, value string) {
+	if c.header == nil {
+		c.header = Headers{}
+	}
+	c.header[key] = append(c.header[key], value)
+}
+
+// ResponseHeaders returns the accumulated response headers.
+func (c *HandlerContext) ResponseHeaders() Headers { return c.header }
 
 // SetTrailer records a trailing-metadata entry (unary: `trailer-*` header;
 // server-stream: END-frame metadata).
