@@ -29,7 +29,7 @@ func faultServer(t *testing.T, body []byte) *httptest.Server {
 func openAndCollect(t *testing.T, base string) (idx []byte, err error) {
 	t.Helper()
 	rt := NewNetHTTP(nil)
-	st, oerr := rt.OpenStream(context.Background(), Request{URL: base + "/x", Method: "POST"})
+	st, oerr := rt.OpenStream(context.Background(), Request{URL: base + "/x"})
 	if oerr != nil {
 		return nil, oerr
 	}

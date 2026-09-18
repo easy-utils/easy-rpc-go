@@ -9,12 +9,12 @@ import (
 
 func TestConformanceUnaryAndStream(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/echo", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/easyrpc.conformance.v1.ConformanceService/Echo", func(w http.ResponseWriter, r *http.Request) {
 		body := readAllReq(r)
 		w.Header().Set("Content-Type", "application/proto")
 		_, _ = w.Write(append([]byte("echo:"), body...))
 	})
-	mux.HandleFunc("/v1/count", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/easyrpc.conformance.v1.ConformanceService/Count", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/connect+proto")
 		sw := NewStreamWriter(w)
 		for i := 0; i < 3; i++ {
@@ -26,7 +26,7 @@ func TestConformanceUnaryAndStream(t *testing.T) {
 	defer srv.Close()
 
 	rt := NewNetHTTP(nil)
-	resp, err := rt.Send(context.Background(), Request{URL: srv.URL + "/v1/echo", Method: "POST", Body: []byte("hi")})
+	resp, err := rt.Send(context.Background(), Request{URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Echo", Body: []byte("hi")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestConformanceUnaryAndStream(t *testing.T) {
 		t.Fatalf("echo %q", resp.Body)
 	}
 
-	st, err := rt.OpenStream(context.Background(), Request{URL: srv.URL + "/v1/count", Method: "POST", Body: []byte{0}})
+	st, err := rt.OpenStream(context.Background(), Request{URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Count", Body: []byte{0}})
 	if err != nil {
 		t.Fatal(err)
 	}

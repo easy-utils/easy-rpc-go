@@ -86,7 +86,6 @@ func ServeNetHTTP(methods []easyrpc.MethodSpec, reg *easyrpc.ServiceRegistry) ht
 		hdrs := easyrpc.GoHeaders(r.Header)
 		req := easyrpc.Request{
 			URL:     r.URL.Path,
-			Method:  r.Method,
 			Headers: hdrs,
 			Body:    body,
 		}

@@ -5,20 +5,21 @@ import (
 	easyrpc "github.com/easy-utils/easy-rpc-go"
 	"context"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func ConformanceService_Methods() []easyrpc.MethodSpec {
 	return []easyrpc.MethodSpec{
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/v1/health", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/v1/echo", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/v1/count", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/v1/fail", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFail", Path: "/v1/stream-fail", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "EchoMeta", Path: "/v1/echo-meta", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Big", Path: "/v1/big", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "FailDetails", Path: "/v1/fail-details", HTTPMethod: "POST", ClientStream: false, ServerStream: false},
-		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFailDetails", Path: "/v1/stream-fail-details", HTTPMethod: "POST", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Health", Path: "/easyrpc.conformance.v1.ConformanceService/Health", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Echo", Path: "/easyrpc.conformance.v1.ConformanceService/Echo", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Count", Path: "/easyrpc.conformance.v1.ConformanceService/Count", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Fail", Path: "/easyrpc.conformance.v1.ConformanceService/Fail", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFail", Path: "/easyrpc.conformance.v1.ConformanceService/StreamFail", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "EchoMeta", Path: "/easyrpc.conformance.v1.ConformanceService/EchoMeta", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "Big", Path: "/easyrpc.conformance.v1.ConformanceService/Big", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "FailDetails", Path: "/easyrpc.conformance.v1.ConformanceService/FailDetails", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "StreamFailDetails", Path: "/easyrpc.conformance.v1.ConformanceService/StreamFailDetails", ClientStream: false, ServerStream: true},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "EchoTrailer", Path: "/easyrpc.conformance.v1.ConformanceService/EchoTrailer", ClientStream: false, ServerStream: false},
+		{Service: "easyrpc.conformance.v1.ConformanceService", Name: "CountTrailer", Path: "/easyrpc.conformance.v1.ConformanceService/CountTrailer", ClientStream: false, ServerStream: true},
 	}
 }
 
@@ -26,69 +27,75 @@ type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
 func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/health", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Health", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &HealthResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Echo", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/count", Method: "POST", Body: protoBytes(in)})
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Count", Body: protoBytes(in)})
 }
 
 func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Fail", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &FailResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) StreamFail(ctx context.Context, in *StreamFailRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/stream-fail", Method: "POST", Body: protoBytes(in)})
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFail", Body: protoBytes(in)})
 }
 
 func (c *ConformanceServiceClient) EchoMeta(ctx context.Context, in *EchoMetaRequest) (*EchoMetaResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/echo-meta", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoMeta", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoMetaResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) Big(ctx context.Context, in *BigRequest) (*BigResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/big", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Big", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &BigResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) FailDetails(ctx context.Context, in *FailDetailsRequest) (*FailDetailsResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/v1/fail-details", Method: "POST", Body: protoBytes(in)})
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/FailDetails", Body: protoBytes(in)})
 	if err != nil { return nil, err }
-	if resp.Error != nil { return nil, resp.Error }
 	out := &FailDetailsResponse{}
 	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
 	return out, nil
 }
 
 func (c *ConformanceServiceClient) StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/v1/stream-fail-details", Method: "POST", Body: protoBytes(in)})
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFailDetails", Body: protoBytes(in)})
+}
+
+func (c *ConformanceServiceClient) EchoTrailer(ctx context.Context, in *EchoTrailerRequest) (*EchoTrailerResponse, error) {
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoTrailer", Body: protoBytes(in)})
+	if err != nil { return nil, err }
+	out := &EchoTrailerResponse{}
+	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	return out, nil
+}
+
+func (c *ConformanceServiceClient) CountTrailer(ctx context.Context, in *CountTrailerRequest) (easyrpc.Stream, error) {
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/CountTrailer", Body: protoBytes(in)})
 }
 
 type ConformanceServiceService interface {
@@ -101,66 +108,80 @@ type ConformanceServiceService interface {
 	Big(ctx context.Context, in *BigRequest) (*BigResponse, error)
 	FailDetails(ctx context.Context, in *FailDetailsRequest) (*FailDetailsResponse, error)
 	StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest, emit func(*StreamFailDetailsResponse) error) error
+	EchoTrailer(ctx context.Context, in *EchoTrailerRequest) (*EchoTrailerResponse, error)
+	CountTrailer(ctx context.Context, in *CountTrailerRequest, emit func(*CountTrailerResponse) error) error
 }
 
 func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.ServiceRegistry {
 	reg := easyrpc.NewServiceRegistry()
-	reg.Unary["Health"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["Health"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &HealthRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.Health(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Unary["Echo"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["Echo"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.Echo(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Stream["Count"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+	reg.Stream["Count"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &CountRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return err }
-		return impl.Count(ctx, in, func(out *CountResponse) error { return emit(codecBytes(out, kind), false) })
+		if err := proto.Unmarshal(req, in); err != nil { return err }
+		return impl.Count(ctx, in, func(out *CountResponse) error { return emit(protoBytes(out), false) })
 	}
-	reg.Unary["Fail"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["Fail"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &FailRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.Fail(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Stream["StreamFail"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+	reg.Stream["StreamFail"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &StreamFailRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return err }
-		return impl.StreamFail(ctx, in, func(out *StreamFailResponse) error { return emit(codecBytes(out, kind), false) })
+		if err := proto.Unmarshal(req, in); err != nil { return err }
+		return impl.StreamFail(ctx, in, func(out *StreamFailResponse) error { return emit(protoBytes(out), false) })
 	}
-	reg.Unary["EchoMeta"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["EchoMeta"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoMetaRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.EchoMeta(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Unary["Big"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["Big"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &BigRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.Big(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Unary["FailDetails"] = func(ctx context.Context, req []byte, kind string) ([]byte, error) {
+	reg.Unary["FailDetails"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &FailDetailsRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return nil, err }
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
 		out, err := impl.FailDetails(ctx, in)
 		if err != nil { return nil, err }
-		return codecBytes(out, kind), nil
+		return protoBytes(out), nil
 	}
-	reg.Stream["StreamFailDetails"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+	reg.Stream["StreamFailDetails"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &StreamFailDetailsRequest{}
-		if err := decodeIn(req, kind, in); err != nil { return err }
-		return impl.StreamFailDetails(ctx, in, func(out *StreamFailDetailsResponse) error { return emit(codecBytes(out, kind), false) })
+		if err := proto.Unmarshal(req, in); err != nil { return err }
+		return impl.StreamFailDetails(ctx, in, func(out *StreamFailDetailsResponse) error { return emit(protoBytes(out), false) })
+	}
+	reg.Unary["EchoTrailer"] = func(ctx context.Context, req []byte) ([]byte, error) {
+		in := &EchoTrailerRequest{}
+		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		out, err := impl.EchoTrailer(ctx, in)
+		if err != nil { return nil, err }
+		return protoBytes(out), nil
+	}
+	reg.Stream["CountTrailer"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
+		in := &CountTrailerRequest{}
+		if err := proto.Unmarshal(req, in); err != nil { return err }
+		return impl.CountTrailer(ctx, in, func(out *CountTrailerResponse) error { return emit(protoBytes(out), false) })
 	}
 	return reg
 }
@@ -168,15 +189,5 @@ func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.
 func protoBytes(m proto.Message) []byte {
 	b, _ := proto.Marshal(m)
 	return b
-}
-
-func decodeIn(req []byte, kind string, m proto.Message) error {
-	if kind == "json" { return protojson.Unmarshal(req, m) }
-	return proto.Unmarshal(req, m)
-}
-
-func codecBytes(m proto.Message, kind string) []byte {
-	if kind == "json" { b, _ := protojson.Marshal(m); return b }
-	b, _ := proto.Marshal(m); return b
 }
 

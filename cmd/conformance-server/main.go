@@ -19,8 +19,12 @@ func (impl) Echo(c context.Context, in *cv1.EchoRequest) (*cv1.EchoResponse, err
 	return &cv1.EchoResponse{Output: "echo:" + in.Input}, nil
 }
 func (impl) Count(c context.Context, in *cv1.CountRequest, emit func(*cv1.CountResponse) error) error {
-	for i := 0; i < 3; i++ {
-		if err := emit(&cv1.CountResponse{Index: int32(i)}); err != nil {
+	n := int32(3)
+	if in.Count > 0 {
+		n = in.Count
+	}
+	for i := int32(0); i < n; i++ {
+		if err := emit(&cv1.CountResponse{Index: i}); err != nil {
 			return err
 		}
 	}
@@ -82,6 +86,31 @@ func (impl) StreamFailDetails(c context.Context, in *cv1.StreamFailDetailsReques
 		Message: in.Message,
 		Details: []easyrpc.ErrorDetail{{Type: in.DetailType, Value: []byte(in.DetailText)}},
 	}
+}
+
+// EchoTrailer sets unary trailing metadata (spec §3.3).
+func (impl) EchoTrailer(c context.Context, in *cv1.EchoTrailerRequest) (*cv1.EchoTrailerResponse, error) {
+	if hc := easyrpc.HandlerContextFromContext(c); hc != nil {
+		hc.SetTrailer("x-trl", "unary-"+in.Input)
+	}
+	return &cv1.EchoTrailerResponse{Output: "trailer:" + in.Input}, nil
+}
+
+// CountTrailer sets streaming trailing metadata (spec §3.3).
+func (impl) CountTrailer(c context.Context, in *cv1.CountTrailerRequest, emit func(*cv1.CountTrailerResponse) error) error {
+	if hc := easyrpc.HandlerContextFromContext(c); hc != nil {
+		hc.SetTrailer("x-ctrailer", "done")
+	}
+	n := int32(3)
+	if in.Count > 0 {
+		n = in.Count
+	}
+	for i := int32(0); i < n; i++ {
+		if err := emit(&cv1.CountTrailerResponse{Index: i}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func addr() string {

@@ -73,7 +73,7 @@ func NewNetHTTPWith(prefs ProtocolPrefs, client *http.Client) *NetHTTP {
 
 // Send implements Transport.Send for unary.
 func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, req.URL, strings.NewReader(string(req.Body)))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.URL, strings.NewReader(string(req.Body)))
 	if err != nil {
 		return Response{}, err
 	}
@@ -81,6 +81,7 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 	if httpReq.Header.Get("Content-Type") == "" {
 		httpReq.Header.Set("Content-Type", "application/proto")
 	}
+	httpReq.Header.Set("Accept-Encoding", "gzip")
 	resp, err := b.client.Do(httpReq)
 	if err != nil {
 		return Response{}, err
@@ -90,12 +91,19 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	hdrs := goHeaders(resp.Header)
-	hdrs.Set("proto", resp.Proto)
+	if resp.Header.Get("Content-Encoding") == "gzip" && len(body) > 0 {
+		if z, zerr := GzipDecompress(body); zerr == nil {
+			body = z
+		}
+	}
+	all := goHeaders(resp.Header)
+	all.Set("proto", resp.Proto)
+	hdrs, trailers := DemuxTrailers(all)
 	out := Response{
-		Status:  resp.StatusCode,
-		Headers: hdrs,
-		Body:    body,
+		Status:   resp.StatusCode,
+		Headers:  hdrs,
+		Body:     body,
+		Trailers: trailers,
 	}
 	// Non-2xx: reconstruct the exact Connect error from the headers (the HTTP
 	// status alone is lossy — several Connect codes share a status).
@@ -122,7 +130,7 @@ func (b *NetHTTP) Send(ctx context.Context, req Request) (Response, error) {
 
 // OpenStream implements Transport.OpenStream for server-stream.
 func (b *NetHTTP) OpenStream(ctx context.Context, req Request) (Stream, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, req.URL, strings.NewReader(string(req.Body)))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.URL, strings.NewReader(string(req.Body)))
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +154,10 @@ func (b *NetHTTP) OpenStream(ctx context.Context, req Request) (Stream, error) {
 
 // httpStream adapts an http.Response body to the Stream interface.
 type httpStream struct {
-	resp  *http.Response
-	body  io.ReadCloser
-	ended bool
+	resp     *http.Response
+	body     io.ReadCloser
+	ended    bool
+	trailers Headers
 }
 
 func (s *httpStream) Recv() ([]byte, error) {
@@ -167,13 +176,23 @@ func (s *httpStream) Recv() ([]byte, error) {
 	}
 	if end {
 		s.ended = true
-		// A non-empty END payload is a Connect end-stream error.
+		// A non-empty END payload may carry an error and/or trailing metadata.
 		if m := DecodeEndStream(payload); m.Code != 0 {
 			return nil, &RPCError{Code: m.Code, Message: m.Message, Details: m.Details}
+		} else if m.Metadata != nil {
+			s.trailers = m.Metadata
 		}
 		return nil, io.EOF
 	}
 	return payload, nil
+}
+
+// Trailers returns trailing metadata collected from the END frame.
+func (s *httpStream) Trailers() Headers {
+	if s.trailers != nil {
+		return s.trailers
+	}
+	return Headers{}
 }
 
 func (s *httpStream) Cancel() {

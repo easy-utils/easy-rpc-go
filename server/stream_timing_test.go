@@ -15,7 +15,7 @@ import (
 
 func TestStreamIsIncremental(t *testing.T) {
 	reg := easyrpc.NewServiceRegistry()
-	reg.Stream["Slow"] = func(ctx context.Context, req []byte, kind string, emit func([]byte, bool) error) error {
+	reg.Stream["Slow"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		for i := 0; i < 3; i++ {
 			if err := emit([]byte{byte(i)}, false); err != nil {
 				return err

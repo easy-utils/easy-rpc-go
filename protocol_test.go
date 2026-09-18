@@ -34,7 +34,7 @@ func TestUnarySend(t *testing.T) {
 	defer srv.Close()
 	rt := NewNetHTTP(nil)
 	resp, err := rt.Send(context.Background(), Request{
-		URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Echo", Method: "POST", Body: []byte("ping"),
+		URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Echo", Body: []byte("ping"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestServerStream(t *testing.T) {
 	defer srv.Close()
 	rt := NewNetHTTP(nil)
 	stream, err := rt.OpenStream(context.Background(), Request{
-		URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Count", Method: "POST", Body: []byte{0, 0, 0, 1},
+		URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/Count", Body: []byte{0, 0, 0, 1},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -97,8 +97,8 @@ func TestEndStreamErrorJSON(t *testing.T) {
 	if m.Code != 5 || m.Message != "nope" {
 		t.Fatalf("decode: %+v", m)
 	}
-	if got := EncodeEndStream(EndStreamMessage{}); len(got) != 0 {
-		t.Fatalf("clean end should be empty, got %q", got)
+	if got := EncodeEndStream(EndStreamMessage{}); string(got) != "{}" {
+		t.Fatalf("clean end should be {}, got %q", got)
 	}
 	if m := DecodeEndStream(nil); m.Code != 0 {
 		t.Fatalf("clean decode: %+v", m)
@@ -107,7 +107,7 @@ func TestEndStreamErrorJSON(t *testing.T) {
 
 func TestStreamRecvSurfacesEndError(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/stream-fail", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/easyrpc.conformance.v1.ConformanceService/StreamFail", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/connect+proto")
 		sw := NewStreamWriter(w)
 		_ = sw.Write([]byte{1})
@@ -116,7 +116,7 @@ func TestStreamRecvSurfacesEndError(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	rt := NewNetHTTP(nil)
-	st, err := rt.OpenStream(context.Background(), Request{URL: srv.URL + "/v1/stream-fail", Method: "POST", Body: []byte{}})
+	st, err := rt.OpenStream(context.Background(), Request{URL: srv.URL + "/easyrpc.conformance.v1.ConformanceService/StreamFail", Body: []byte{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestInterceptorTransport(t *testing.T) {
 	var got Headers
 	base := &captureTransport{onSend: func(req Request) { got = req.Headers }}
 	it := WithInterceptors(base, MetadataInterceptor(Headers{"x-test": {"abc"}}), TimeoutInterceptor(250*time.Millisecond))
-	_, _ = it.Send(context.Background(), Request{URL: "/x", Method: "POST"})
+	_, _ = it.Send(context.Background(), Request{URL: "/x"})
 	if got.Get("x-test") != "abc" || got.Get(HeaderTimeout) != "250" {
 		t.Fatalf("interceptors not applied: %+v", got)
 	}
@@ -179,8 +179,8 @@ func TestErrorJSONRoundtrip(t *testing.T) {
 
 func TestProtocolVersionAndLimit(t *testing.T) {
 	reg := NewServiceRegistry()
-	reg.Unary["Echo"] = func(_ context.Context, req []byte, _ string) ([]byte, error) { return req, nil }
-	methods := []MethodSpec{{Service: "t.T", Name: "Echo", Path: "/t.Echo", HTTPMethod: "POST"}}
+	reg.Unary["Echo"] = func(_ context.Context, req []byte) ([]byte, error) { return req, nil }
+	methods := []MethodSpec{{Service: "t.T", Name: "Echo", Path: "/t.Echo", }}
 	// bad version -> 12 unimplemented
 	w := &capWriter{}
 	_ = Dispatch(context.Background(), Request{URL: "/t.Echo", Headers: Headers{HeaderProtocolVersion: {"999"}}}, methods, reg, w)
@@ -237,7 +237,7 @@ func TestDeadlineInterceptorCancels(t *testing.T) {
 	slow := &blockingTransport{}
 	it := WithInterceptors(slow, DeadlineInterceptor(50*time.Millisecond))
 	start := time.Now()
-	_, err := it.Send(context.Background(), Request{URL: "/slow", Method: "POST"})
+	_, err := it.Send(context.Background(), Request{URL: "/slow"})
 	if err == nil {
 		t.Fatal("expected a deadline error")
 	}
@@ -264,7 +264,7 @@ func TestConnectCompositionRoot(t *testing.T) {
 	_ = slow
 	t1 := Connect(ConnectOptions{BaseURL: "http://127.0.0.1:1", Token: "abc", Timeout: 50 * time.Millisecond})
 	start := time.Now()
-	_, err := t1.Send(context.Background(), Request{URL: "/x", Method: "POST"})
+	_, err := t1.Send(context.Background(), Request{URL: "/x"})
 	if err == nil {
 		t.Fatal("expected error")
 	}

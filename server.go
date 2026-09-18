@@ -2,18 +2,20 @@ package easyrpc
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"strconv"
 	"strings"
 )
 
-// UnaryHandler decodes request bytes -> response bytes. kind is "proto"|"json".
-// ctx carries request metadata headers (see HeadersFromContext) for authz.
-type UnaryHandler func(ctx context.Context, req []byte, kind string) (resp []byte, err error)
+// UnaryHandler decodes request bytes -> response bytes. ctx carries request
+// metadata (see HeadersFromContext) and the HandlerContext (trailer channel).
+type UnaryHandler func(ctx context.Context, req []byte) (resp []byte, err error)
 
-// StreamHandler serves server-stream; emit(payload,true) ends.
-type StreamHandler func(ctx context.Context, req []byte, kind string, emit func(payload []byte, end bool) error) error
+// StreamHandler serves server-stream; emit(payload,false) sends a frame,
+// emit(nil,true) ends. The handler's ctx carries the HandlerContext.
+type StreamHandler func(ctx context.Context, req []byte, emit func(payload []byte, end bool) error) error
 
 // ServiceRegistry maps method name -> handler.
 type ServiceRegistry struct {
@@ -40,26 +42,16 @@ type ResponseWriter interface {
 	WriteFrame(payload []byte) error
 }
 
-// contentKind picks "proto" or "json" from the incoming headers, defaulting to proto.
-func contentKindHeaders(h Headers) string {
-	// Streaming JSON arrives as application/connect+json — both prefixes are
-	// JSON kinds (spec §2).
-	if ct := h.Get("Content-Type"); strings.HasPrefix(ct, "application/json") || strings.HasPrefix(ct, "application/connect+json") {
-		return "json"
-	}
-	if ac := h.Get("Accept"); strings.HasPrefix(ac, "application/json") || strings.HasPrefix(ac, "application/connect+json") {
-		return "json"
-	}
-	return "proto"
-}
+// proto-only content types (spec §2); easy-rpc v2 has no JSON codec.
+const (
+	ContentTypeUnary  = "application/proto"
+	ContentTypeStream = "application/connect+proto"
+)
 
 // Dispatch is the ASGI-style pure application. It decodes an RPC request, runs
-// the handler, and PUSHES the response into w frame-by-frame (server-stream is
-// never buffered). It is protocol-agnostic: it never imports a specific HTTP
-// runtime. Backends (net/http, fasthttp, a hand-rolled server, ...) only adapt
-// by providing a ResponseWriter.
+// the handler, and PUSHES the response into w frame-by-frame. Protocol-agnostic:
+// it never imports a specific HTTP runtime.
 func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *ServiceRegistry, w ResponseWriter) error {
-	kind := contentKindHeaders(req.Headers)
 	// Protocol version: reject an explicitly-unsupported version.
 	if pv := req.Headers.Get(HeaderProtocolVersion); pv != "" && pv != ConnectProtocolVersion {
 		return writeError(w, &RPCError{Code: 12, Message: "unsupported connect-protocol-version: " + pv})
@@ -70,10 +62,6 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	path := req.URL
 	if i := strings.IndexByte(path, '?'); i >= 0 {
 		path = path[:i]
-	}
-	ct := "application/proto"
-	if kind == "json" {
-		ct = "application/json"
 	}
 	// find method by path
 	var spec *MethodSpec
@@ -86,15 +74,44 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	if spec == nil {
 		return writeError(w, &RPCError{Code: 5, Message: "not found"})
 	}
+
+	// proto-only content type check (spec §2).
+	wantCT := ContentTypeUnary
+	if spec.ServerStream {
+		wantCT = ContentTypeStream
+	}
+	gotCT := strings.TrimSpace(strings.ToLower(strings.SplitN(req.Headers.Get("Content-Type"), ";", 2)[0]))
+	if gotCT != wantCT {
+		return writeErrorStatus(w, &RPCError{Code: 3, Message: "unsupported content-type: expected " + wantCT}, 415)
+	}
+
+	// Per-RPC metadata + trailer channel.
+	hc := NewHandlerContext(req.Headers)
+	ctx = ContextWithHeaders(ctx, req.Headers)
+	ctx = ContextWithHandlerContext(ctx, hc)
+
+	timeout := ParseTimeout(req.Headers.Get(HeaderTimeout))
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
 	if spec.ServerStream {
 		h := reg.Stream[spec.Name]
 		if h == nil {
 			return writeError(w, &RPCError{Code: 5, Message: "method not found"})
 		}
+		// Stream request body is ENVELOPED: one data frame carrying the single
+		// request message (Connect spec). Unframe before dispatch.
+		reqBody, ferr := readSingleFrame(req.Body)
+		if ferr != nil {
+			return writeError(w, ferr)
+		}
 		// Connect semantics: a server-stream is always HTTP 200; failures ride
 		// the END frame, never an HTTP status.
 		w.Status(200)
-		w.Header(Headers{"Content-Type": []string{streamContent(ct)}})
+		w.Header(Headers{"Content-Type": []string{ContentTypeStream}})
 		wantsGzip := false
 		for _, v := range req.Headers[HeaderAcceptEncoding] {
 			for _, e := range strings.Split(v, ",") {
@@ -110,7 +127,7 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 			}
 			if end {
 				ended = true
-				return w.WriteFrame(Frame(nil, true))
+				return w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Metadata: hc.Trailers()}), true))
 			}
 			if wantsGzip && len(p) >= CompressMinBytes {
 				if z, err := GzipCompress(p); err == nil {
@@ -119,40 +136,89 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 			}
 			return w.WriteFrame(Frame(p, false))
 		}
-		if err := h(ctx, req.Body, kind, emit); err != nil {
+		if err := h(ctx, reqBody, emit); err != nil {
 			re := asRPCError(err)
 			if !ended {
 				ended = true
-				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message, Details: re.Details}), true))
+				_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: re.Code, Message: re.Message, Details: re.Details, Metadata: hc.Trailers()}), true))
 			}
 			return nil
 		}
 		if !ended {
-			_ = w.WriteFrame(Frame(nil, true))
+			_ = w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Metadata: hc.Trailers()}), true))
 		}
 		return nil
 	}
+
 	h := reg.Unary[spec.Name]
 	if h == nil {
 		return writeError(w, &RPCError{Code: 5, Message: "method not found"})
 	}
 	// Unary: resolve fully before writing so a failure can set a real status.
-	resp, err := h(ctx, req.Body, kind)
+	resp, err := h(ctx, req.Body)
 	if err != nil {
-		return writeError(w, asRPCError(err))
+		re := asRPCError(err)
+		w.Header(MuxTrailers(Headers{"Content-Type": []string{"application/json"}}, hc.Trailers()))
+		w.Status(HTTPStatus(re.Code))
+		_ = w.WriteFrame(EncodeErrorJSON(re.Code, re.Message, re.Details))
+		return nil
+	}
+	// Unary gzip (spec §3.5): compress when the client accepts gzip.
+	if acceptsGzip(req.Headers[HeaderAcceptEncoding]) && len(resp) >= CompressMinBytes {
+		if z, zerr := GzipCompress(resp); zerr == nil {
+			w.Header(MuxTrailers(Headers{"Content-Type": []string{ContentTypeUnary}, "Content-Encoding": []string{EncodingGzip}}, hc.Trailers()))
+			w.Status(200)
+			return w.WriteFrame(z)
+		}
 	}
 	w.Status(200)
-	w.Header(Headers{"Content-Type": []string{ct}})
+	w.Header(MuxTrailers(Headers{"Content-Type": []string{ContentTypeUnary}}, hc.Trailers()))
 	return w.WriteFrame(resp)
 }
 
-// writeError emits a non-200 error response. Only reached before any body
-// bytes. The Connect code travels as the `connect-code` header so the client
-// can reconstruct the exact error (the HTTP status alone is lossy).
+func acceptsGzip(vals []string) bool {
+	for _, v := range vals {
+		for _, e := range strings.Split(v, ",") {
+			if strings.TrimSpace(e) == EncodingGzip {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// readSingleFrame reads exactly one frame (the enveloped server-stream request
+// message). Returns the payload. Errors on truncation / size violation.
+func readSingleFrame(body []byte) ([]byte, *RPCError) {
+	if len(body) < 5 {
+		return nil, &RPCError{Code: 13, Message: "stream request: truncated frame header"}
+	}
+	flags := body[0]
+	length := binary.BigEndian.Uint32(body[1:5])
+	if int(length) > DefaultMaxMessageBytes {
+		return nil, &RPCError{Code: 8, Message: "frame too large"}
+	}
+	if len(body) < 5+int(length) {
+		return nil, &RPCError{Code: 13, Message: "stream request: truncated frame"}
+	}
+	payload := body[5 : 5+length]
+	if flags&0x01 != 0 {
+		z, err := GzipDecompress(payload)
+		if err != nil {
+			return nil, &RPCError{Code: 13, Message: "stream request: corrupt gzip frame"}
+		}
+		return z, nil
+	}
+	return payload, nil
+}
+
+// writeError emits a non-200 error response (Connect HTTP status + JSON body).
 func writeError(w ResponseWriter, err *RPCError) error {
-	// Connect unary error: HTTP status + JSON body `{code,message}`. The legacy
-	// connect-code/connect-error headers are kept for backward compatibility.
-	w.Status(HTTPStatus(err.Code))
+	return writeErrorStatus(w, err, HTTPStatus(err.Code))
+}
+
+func writeErrorStatus(w ResponseWriter, err *RPCError, status int) error {
+	w.Status(status)
 	w.Header(Headers{
 		"Content-Type":  []string{"application/json"},
 		"Connect-Code":  []string{strconv.Itoa(err.Code)},
@@ -161,8 +227,7 @@ func writeError(w ResponseWriter, err *RPCError) error {
 	return w.WriteFrame(EncodeErrorJSON(err.Code, err.Message, err.Details))
 }
 
-// EncodeErrorJSON builds a Connect unary error body (details omitted when
-// empty, keeping the v1.0 byte-for-byte shape).
+// EncodeErrorJSON builds a Connect unary error body.
 func EncodeErrorJSON(code int, message string, details []ErrorDetail) []byte {
 	body := struct {
 		Code    string       `json:"code"`
@@ -173,8 +238,7 @@ func EncodeErrorJSON(code int, message string, details []ErrorDetail) []byte {
 	return b
 }
 
-// DecodeErrorJSON parses a Connect unary error body; (0, "") when not an error
-// body. Tolerates plain-text bodies.
+// DecodeErrorJSON parses a Connect unary error body; (0, "") when not an error.
 func DecodeErrorJSON(body []byte) (int, string, []ErrorDetail) {
 	if len(body) == 0 {
 		return 0, "", nil
@@ -190,13 +254,6 @@ func DecodeErrorJSON(body []byte) (int, string, []ErrorDetail) {
 	return 0, "", nil
 }
 
-func streamContent(ct string) string {
-	if ct == "application/json" {
-		return "application/connect+json"
-	}
-	return "application/connect+proto"
-}
-
 func asRPCError(err error) *RPCError {
 	if err == nil {
 		return nil
@@ -207,17 +264,14 @@ func asRPCError(err error) *RPCError {
 	return &RPCError{Code: 13, Message: err.Error()}
 }
 
-// StreamWriter writes framed responses for a server-stream handler, writing
-// frames directly to an io.Writer (e.g. an http.ResponseWriter).
+// StreamWriter writes framed responses for a server-stream handler.
 type StreamWriter struct {
 	w   io.Writer
 	end bool
 }
 
 // NewStreamWriter wraps w to write framed responses.
-func NewStreamWriter(w io.Writer) *StreamWriter {
-	return &StreamWriter{w: w}
-}
+func NewStreamWriter(w io.Writer) *StreamWriter { return &StreamWriter{w: w} }
 
 // Write sends one message payload as a frame.
 func (s *StreamWriter) Write(payload []byte) error {

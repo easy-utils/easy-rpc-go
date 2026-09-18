@@ -22,7 +22,7 @@ import (
 )
 
 // Version is the easy-rpc Go core version.
-const Version = "0.5.4"
+const Version = "2.0.0"
 
 // Headers is a generic multi-value header map.
 type Headers map[string][]string
@@ -176,9 +176,9 @@ func TimeoutInterceptor(d time.Duration) Interceptor {
 }
 
 // Request is a normalized RPC request independent of any HTTP runtime.
+// All easy-rpc calls are POST (spec §0); no method field.
 type Request struct {
 	URL     string
-	Method  string // http method (GET / POST / ...)
 	Headers Headers
 	Body    []byte
 }
@@ -188,7 +188,8 @@ type Response struct {
 	Status  int
 	Headers Headers
 	Body    []byte
-	// Trailers are optional (set on streaming end).
+	// Trailers are the unary trailing metadata (demuxed from `trailer-*`
+	// response headers by the bridge).
 	Trailers Headers
 	// Error carries a non-nil value when the RPC failed.
 	Error *RPCError
@@ -300,6 +301,8 @@ type Stream interface {
 	// Recv reads the next raw frame payload (already de-framed). Returns
 	// io.EOF when the stream ends.
 	Recv() ([]byte, error)
+	// Trailers returns the trailing metadata (available after io.EOF).
+	Trailers() Headers
 	// Cancel terminates the stream (v1 cancellation).
 	Cancel()
 	// Close shuts down resources.
@@ -380,12 +383,14 @@ func ReadFrame(r io.Reader) (payload []byte, endStream bool, err error) {
 
 // EndStreamMessage is the Connect end-stream payload. A clean end carries
 // Code == 0; a failure carries the Connect code + message. It serializes as
-// `{"error":{"code":"<name>","message":"..."}}` (see the Connect protocol).
+// `{"error":{"code":"<name>","message":"..."},"metadata":{...}}`.
 type EndStreamMessage struct {
 	Code    int
 	Message string
 	// Optional structured details carried in the end-stream JSON (spec §4.1).
 	Details []ErrorDetail
+	// Trailing metadata (spec §3.3); nil = none.
+	Metadata Headers
 }
 
 // CodeNames maps Connect codes to their stable lowercase wire names.
@@ -421,6 +426,7 @@ type endStreamJSON struct {
 		Message string       `json:"message"`
 		Details []wireDetail `json:"details,omitempty"`
 	} `json:"error,omitempty"`
+	Metadata Headers `json:"metadata,omitempty"`
 }
 
 // wireDetail is the JSON shape of one detail: {type, base64 value}.
@@ -461,19 +467,23 @@ func decodeWireDetails(v []wireDetail) []ErrorDetail {
 }
 
 // EncodeEndStream encodes an EndStreamMessage as a Connect end-stream payload.
+// A clean end still serializes as `{}` — Connect's parser requires valid JSON.
 func EncodeEndStream(m EndStreamMessage) []byte {
-	if m.Code == 0 && len(m.Details) == 0 {
-		return nil
-	}
 	var es endStreamJSON
-	es.Error = &struct {
-		Code    string       `json:"code"`
-		Message string       `json:"message"`
-		Details []wireDetail `json:"details,omitempty"`
-	}{Code: CodeToString(m.Code), Message: m.Message, Details: encodeWireDetails(m.Details)}
-	if m.Code == 0 {
-		// Details without an error code are not representable on the wire.
-		es.Error.Code = CodeToString(2)
+	if m.Code != 0 || len(m.Details) > 0 {
+		code := m.Code
+		if code == 0 {
+			// Details without an error code are not representable.
+			code = 2
+		}
+		es.Error = &struct {
+			Code    string       `json:"code"`
+			Message string       `json:"message"`
+			Details []wireDetail `json:"details,omitempty"`
+		}{Code: CodeToString(code), Message: m.Message, Details: encodeWireDetails(m.Details)}
+	}
+	if len(m.Metadata) > 0 {
+		es.Metadata = m.Metadata
 	}
 	b, _ := json.Marshal(es)
 	return b
@@ -486,14 +496,18 @@ func DecodeEndStream(payload []byte) EndStreamMessage {
 		return EndStreamMessage{}
 	}
 	var es endStreamJSON
-	if err := json.Unmarshal(payload, &es); err != nil || es.Error == nil {
+	if err := json.Unmarshal(payload, &es); err != nil {
 		return EndStreamMessage{}
+	}
+	if es.Error == nil {
+		// 0-code clean end, but may carry metadata (spec M14).
+		return EndStreamMessage{Metadata: es.Metadata}
 	}
 	code := 2
 	if es.Error.Code != "" {
 		code = CodeFromString(es.Error.Code)
 	}
-	return EndStreamMessage{Code: code, Message: es.Error.Message, Details: decodeWireDetails(es.Error.Details)}
+	return EndStreamMessage{Code: code, Message: es.Error.Message, Details: decodeWireDetails(es.Error.Details), Metadata: es.Metadata}
 }
 
 // HeaderTimeout is the Connect request-timeout header.
@@ -667,15 +681,86 @@ func URLFor(pkg, service, method string) string {
 	return "/" + pkg + "." + service + "/" + method
 }
 
+// TrailerHeaderPrefix is the prefix for unary trailing metadata on response
+// headers (`trailer-<key>`), matching Connect.
+const TrailerHeaderPrefix = "trailer-"
+
+// MuxTrailers merges trailing metadata into response headers using the
+// `trailer-` prefix.
+func MuxTrailers(headers, trailers Headers) Headers {
+	out := Headers{}
+	for k, v := range headers {
+		out[k] = v
+	}
+	for k, v := range trailers {
+		out[TrailerHeaderPrefix+strings.ToLower(k)] = v
+	}
+	return out
+}
+
+// DemuxTrailers splits response headers into (headers, trailers) by the
+// case-insensitive `trailer-` prefix.
+func DemuxTrailers(all Headers) (Headers, Headers) {
+	h := Headers{}
+	t := Headers{}
+	for k, v := range all {
+		lk := strings.ToLower(k)
+		if strings.HasPrefix(lk, TrailerHeaderPrefix) {
+			t[lk[len(TrailerHeaderPrefix):]] = v
+		} else {
+			h[k] = v
+		}
+	}
+	return h, t
+}
+
+// HandlerContext is passed to generated unary/stream handlers. It exposes
+// request metadata and a channel to set trailing metadata. It travels inside
+// the handler's context (see HandlerContextFromContext), so the generated
+// service interface keeps its plain (ctx, in) signature.
+type HandlerContext struct {
+	Headers Headers
+	trailer Headers
+}
+
+// NewHandlerContext builds a context carrying request metadata.
+func NewHandlerContext(headers Headers) *HandlerContext {
+	return &HandlerContext{Headers: headers, trailer: Headers{}}
+}
+
+// SetTrailer records a trailing-metadata entry (unary: `trailer-*` header;
+// server-stream: END-frame metadata).
+func (c *HandlerContext) SetTrailer(key, value string) {
+	if c.trailer == nil {
+		c.trailer = Headers{}
+	}
+	c.trailer[key] = append(c.trailer[key], value)
+}
+
+// Trailers returns the accumulated trailing metadata.
+func (c *HandlerContext) Trailers() Headers { return c.trailer }
+
+type handlerContextKey struct{}
+
+// ContextWithHandlerContext attaches hc to ctx.
+func ContextWithHandlerContext(ctx context.Context, hc *HandlerContext) context.Context {
+	return context.WithValue(ctx, handlerContextKey{}, hc)
+}
+
+// HandlerContextFromContext returns the handler context, or nil.
+func HandlerContextFromContext(ctx context.Context) *HandlerContext {
+	hc, _ := ctx.Value(handlerContextKey{}).(*HandlerContext)
+	return hc
+}
+
 // MethodSpec describes a generated RPC method (mirrors what generators emit).
+// easy-rpc v2: every method is POST with a gRPC-style path; no verb/body.
 type MethodSpec struct {
 	Service      string // e.g. "easyrpc.conformance.v1.ConformanceService"
 	Name         string // e.g. "Echo"
-	Path         string // resolved HTTP path (REST or gRPC style)
-	HTTPMethod   string // GET / POST
+	Path         string // gRPC-style path "/pkg.Service/Method"
 	ClientStream bool
 	ServerStream bool
-	Body         string // body binding ("*" or field name) for REST
 }
 
 // ServiceDesc is the runtime descriptor for a generated service.
