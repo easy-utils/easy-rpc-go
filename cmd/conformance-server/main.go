@@ -31,7 +31,10 @@ func (impl) Count(c context.Context, in *cv1.CountRequest, emit func(*cv1.CountR
 	return nil
 }
 func (impl) Fail(c context.Context, in *cv1.FailRequest) (*cv1.FailResponse, error) {
-	return &cv1.FailResponse{Ok: in.Message == ""}, nil
+	if in.Message != "" {
+		return nil, &easyrpc.RPCError{Code: 3, Message: in.Message}
+	}
+	return &cv1.FailResponse{Ok: true}, nil
 }
 
 // StreamFail emits `emit_before` frames, then ends the stream with a Connect

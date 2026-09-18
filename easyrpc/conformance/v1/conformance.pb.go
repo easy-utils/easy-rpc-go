@@ -1151,7 +1151,8 @@ const file_easyrpc_conformance_v1_conformance_proto_rawDesc = "" +
 	"\vFailDetails\x12*.easyrpc.conformance.v1.FailDetailsRequest\x1a+.easyrpc.conformance.v1.FailDetailsResponse\x12z\n" +
 	"\x11StreamFailDetails\x120.easyrpc.conformance.v1.StreamFailDetailsRequest\x1a1.easyrpc.conformance.v1.StreamFailDetailsResponse0\x01\x12f\n" +
 	"\vEchoTrailer\x12*.easyrpc.conformance.v1.EchoTrailerRequest\x1a+.easyrpc.conformance.v1.EchoTrailerResponse\x12k\n" +
-	"\fCountTrailer\x12+.easyrpc.conformance.v1.CountTrailerRequest\x1a,.easyrpc.conformance.v1.CountTrailerResponse0\x01B@Z>github.com/easy-utils/easy-rpc-go/conformance/v1;conformancev1b\x06proto3"
+	"\fCountTrailer\x12+.easyrpc.conformance.v1.CountTrailerRequest\x1a,.easyrpc.conformance.v1.CountTrailerResponse0\x01B^\n" +
+	"\x1acom.easyrpc.conformance.v1P\x01Z>github.com/easy-utils/easy-rpc-go/conformance/v1;conformancev1b\x06proto3"
 
 var (
 	file_easyrpc_conformance_v1_conformance_proto_rawDescOnce sync.Once
