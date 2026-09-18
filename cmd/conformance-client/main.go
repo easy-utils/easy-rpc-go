@@ -22,6 +22,10 @@ func main() {
 	}
 	realm := easyrpc.Realm(os.Getenv("EASY_RPC_REALM"))
 	if realm == "" {
+		// Unified transport vocabulary (spec §7.1): EASY_RPC_TRANSPORT=std|auto.
+		realm = easyrpc.Realm(os.Getenv("EASY_RPC_TRANSPORT"))
+	}
+	if realm == "" {
 		realm = easyrpc.RealmStd
 	}
 
@@ -104,6 +108,44 @@ func main() {
 	}
 	if len(sfdIdx) != 2 {
 		fmt.Println("SFD_WRONG_FRAMES", sfdIdx)
+		os.Exit(1)
+	}
+
+	// ---- extended shapes ----
+	if _, err := c.EchoBytes(ctx, &cv1.EchoBytesRequest{Data: []byte{0, 1, 2, 0xff, 0xfe, 0x80}}); err != nil {
+		fmt.Println("ECHOBYTES_FAIL", err)
+		os.Exit(1)
+	}
+	if _, err := c.Empty(ctx, &cv1.EmptyRequest{}); err != nil {
+		fmt.Println("EMPTY_FAIL", err)
+		os.Exit(1)
+	}
+	// Sleep is exercised via a short deadline header on the transport.
+	if _, err := c.Sleep(ctx, &cv1.SleepRequest{Millis: 0}); err != nil {
+		fmt.Println("SLEEP_FAIL", err)
+		os.Exit(1)
+	}
+	bs, err := c.BigStream(ctx, &cv1.BigStreamRequest{Count: 3, Size: 2048})
+	if err != nil {
+		fmt.Println("BIGSTREAM_FAIL", err)
+		os.Exit(1)
+	}
+	var bsIdx []int32
+	for {
+		p, err := bs.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println("BIGSTREAM_RECV_FAIL", err)
+			os.Exit(1)
+		}
+		var r cv1.BigStreamResponse
+		_ = proto.Unmarshal(p, &r)
+		bsIdx = append(bsIdx, r.Index)
+	}
+	if len(bsIdx) != 3 {
+		fmt.Println("BIGSTREAM_WRONG", bsIdx)
 		os.Exit(1)
 	}
 

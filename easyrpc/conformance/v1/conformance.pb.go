@@ -373,6 +373,358 @@ func (x *HealthResponse) GetName() string {
 	return ""
 }
 
+type EchoBytesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoBytesRequest) Reset() {
+	*x = EchoBytesRequest{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoBytesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoBytesRequest) ProtoMessage() {}
+
+func (x *EchoBytesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoBytesRequest.ProtoReflect.Descriptor instead.
+func (*EchoBytesRequest) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EchoBytesRequest) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type EchoBytesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoBytesResponse) Reset() {
+	*x = EchoBytesResponse{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoBytesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoBytesResponse) ProtoMessage() {}
+
+func (x *EchoBytesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoBytesResponse.ProtoReflect.Descriptor instead.
+func (*EchoBytesResponse) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *EchoBytesResponse) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type SleepRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Millis        int32                  `protobuf:"varint,1,opt,name=millis,proto3" json:"millis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SleepRequest) Reset() {
+	*x = SleepRequest{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SleepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SleepRequest) ProtoMessage() {}
+
+func (x *SleepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SleepRequest.ProtoReflect.Descriptor instead.
+func (*SleepRequest) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SleepRequest) GetMillis() int32 {
+	if x != nil {
+		return x.Millis
+	}
+	return 0
+}
+
+type SleepResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SleepResponse) Reset() {
+	*x = SleepResponse{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SleepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SleepResponse) ProtoMessage() {}
+
+func (x *SleepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SleepResponse.ProtoReflect.Descriptor instead.
+func (*SleepResponse) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SleepResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type EmptyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EmptyRequest) Reset() {
+	*x = EmptyRequest{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmptyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmptyRequest) ProtoMessage() {}
+
+func (x *EmptyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmptyRequest.ProtoReflect.Descriptor instead.
+func (*EmptyRequest) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{12}
+}
+
+type EmptyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EmptyResponse) Reset() {
+	*x = EmptyResponse{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmptyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmptyResponse) ProtoMessage() {}
+
+func (x *EmptyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmptyResponse.ProtoReflect.Descriptor instead.
+func (*EmptyResponse) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{13}
+}
+
+type BigStreamRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         int32                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	Size          int32                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BigStreamRequest) Reset() {
+	*x = BigStreamRequest{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BigStreamRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BigStreamRequest) ProtoMessage() {}
+
+func (x *BigStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BigStreamRequest.ProtoReflect.Descriptor instead.
+func (*BigStreamRequest) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *BigStreamRequest) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *BigStreamRequest) GetSize() int32 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+type BigStreamResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Index         int32                  `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	Size          int32                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BigStreamResponse) Reset() {
+	*x = BigStreamResponse{}
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BigStreamResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BigStreamResponse) ProtoMessage() {}
+
+func (x *BigStreamResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BigStreamResponse.ProtoReflect.Descriptor instead.
+func (*BigStreamResponse) Descriptor() ([]byte, []int) {
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *BigStreamResponse) GetIndex() int32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *BigStreamResponse) GetSize() int32 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
 type StreamFailRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Emit this many data frames, then fail with `code`.
@@ -385,7 +737,7 @@ type StreamFailRequest struct {
 
 func (x *StreamFailRequest) Reset() {
 	*x = StreamFailRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[8]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -397,7 +749,7 @@ func (x *StreamFailRequest) String() string {
 func (*StreamFailRequest) ProtoMessage() {}
 
 func (x *StreamFailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[8]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -410,7 +762,7 @@ func (x *StreamFailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFailRequest.ProtoReflect.Descriptor instead.
 func (*StreamFailRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{8}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StreamFailRequest) GetEmitBefore() int32 {
@@ -443,7 +795,7 @@ type StreamFailResponse struct {
 
 func (x *StreamFailResponse) Reset() {
 	*x = StreamFailResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[9]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -455,7 +807,7 @@ func (x *StreamFailResponse) String() string {
 func (*StreamFailResponse) ProtoMessage() {}
 
 func (x *StreamFailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[9]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -468,7 +820,7 @@ func (x *StreamFailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFailResponse.ProtoReflect.Descriptor instead.
 func (*StreamFailResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{9}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StreamFailResponse) GetIndex() int32 {
@@ -487,7 +839,7 @@ type EchoMetaRequest struct {
 
 func (x *EchoMetaRequest) Reset() {
 	*x = EchoMetaRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[10]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -499,7 +851,7 @@ func (x *EchoMetaRequest) String() string {
 func (*EchoMetaRequest) ProtoMessage() {}
 
 func (x *EchoMetaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[10]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -512,7 +864,7 @@ func (x *EchoMetaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoMetaRequest.ProtoReflect.Descriptor instead.
 func (*EchoMetaRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{10}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *EchoMetaRequest) GetInput() string {
@@ -532,7 +884,7 @@ type EchoMetaResponse struct {
 
 func (x *EchoMetaResponse) Reset() {
 	*x = EchoMetaResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[11]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +896,7 @@ func (x *EchoMetaResponse) String() string {
 func (*EchoMetaResponse) ProtoMessage() {}
 
 func (x *EchoMetaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[11]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +909,7 @@ func (x *EchoMetaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoMetaResponse.ProtoReflect.Descriptor instead.
 func (*EchoMetaResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{11}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *EchoMetaResponse) GetInput() string {
@@ -583,7 +935,7 @@ type BigRequest struct {
 
 func (x *BigRequest) Reset() {
 	*x = BigRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[12]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +947,7 @@ func (x *BigRequest) String() string {
 func (*BigRequest) ProtoMessage() {}
 
 func (x *BigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[12]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +960,7 @@ func (x *BigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BigRequest.ProtoReflect.Descriptor instead.
 func (*BigRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{12}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *BigRequest) GetSize() int32 {
@@ -627,7 +979,7 @@ type BigResponse struct {
 
 func (x *BigResponse) Reset() {
 	*x = BigResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[13]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +991,7 @@ func (x *BigResponse) String() string {
 func (*BigResponse) ProtoMessage() {}
 
 func (x *BigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[13]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +1004,7 @@ func (x *BigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BigResponse.ProtoReflect.Descriptor instead.
 func (*BigResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{13}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *BigResponse) GetSize() int32 {
@@ -674,7 +1026,7 @@ type FailDetailsRequest struct {
 
 func (x *FailDetailsRequest) Reset() {
 	*x = FailDetailsRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[14]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -686,7 +1038,7 @@ func (x *FailDetailsRequest) String() string {
 func (*FailDetailsRequest) ProtoMessage() {}
 
 func (x *FailDetailsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[14]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -699,7 +1051,7 @@ func (x *FailDetailsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailDetailsRequest.ProtoReflect.Descriptor instead.
 func (*FailDetailsRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{14}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *FailDetailsRequest) GetCode() int32 {
@@ -739,7 +1091,7 @@ type FailDetailsResponse struct {
 
 func (x *FailDetailsResponse) Reset() {
 	*x = FailDetailsResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[15]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -751,7 +1103,7 @@ func (x *FailDetailsResponse) String() string {
 func (*FailDetailsResponse) ProtoMessage() {}
 
 func (x *FailDetailsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[15]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -764,7 +1116,7 @@ func (x *FailDetailsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailDetailsResponse.ProtoReflect.Descriptor instead.
 func (*FailDetailsResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{15}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *FailDetailsResponse) GetOk() bool {
@@ -787,7 +1139,7 @@ type StreamFailDetailsRequest struct {
 
 func (x *StreamFailDetailsRequest) Reset() {
 	*x = StreamFailDetailsRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[16]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +1151,7 @@ func (x *StreamFailDetailsRequest) String() string {
 func (*StreamFailDetailsRequest) ProtoMessage() {}
 
 func (x *StreamFailDetailsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[16]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +1164,7 @@ func (x *StreamFailDetailsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFailDetailsRequest.ProtoReflect.Descriptor instead.
 func (*StreamFailDetailsRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{16}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *StreamFailDetailsRequest) GetEmitBefore() int32 {
@@ -859,7 +1211,7 @@ type StreamFailDetailsResponse struct {
 
 func (x *StreamFailDetailsResponse) Reset() {
 	*x = StreamFailDetailsResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[17]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +1223,7 @@ func (x *StreamFailDetailsResponse) String() string {
 func (*StreamFailDetailsResponse) ProtoMessage() {}
 
 func (x *StreamFailDetailsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[17]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +1236,7 @@ func (x *StreamFailDetailsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFailDetailsResponse.ProtoReflect.Descriptor instead.
 func (*StreamFailDetailsResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{17}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *StreamFailDetailsResponse) GetIndex() int32 {
@@ -903,7 +1255,7 @@ type EchoTrailerRequest struct {
 
 func (x *EchoTrailerRequest) Reset() {
 	*x = EchoTrailerRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[18]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -915,7 +1267,7 @@ func (x *EchoTrailerRequest) String() string {
 func (*EchoTrailerRequest) ProtoMessage() {}
 
 func (x *EchoTrailerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[18]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +1280,7 @@ func (x *EchoTrailerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoTrailerRequest.ProtoReflect.Descriptor instead.
 func (*EchoTrailerRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{18}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *EchoTrailerRequest) GetInput() string {
@@ -947,7 +1299,7 @@ type EchoTrailerResponse struct {
 
 func (x *EchoTrailerResponse) Reset() {
 	*x = EchoTrailerResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[19]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -959,7 +1311,7 @@ func (x *EchoTrailerResponse) String() string {
 func (*EchoTrailerResponse) ProtoMessage() {}
 
 func (x *EchoTrailerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[19]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -972,7 +1324,7 @@ func (x *EchoTrailerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoTrailerResponse.ProtoReflect.Descriptor instead.
 func (*EchoTrailerResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{19}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *EchoTrailerResponse) GetOutput() string {
@@ -991,7 +1343,7 @@ type CountTrailerRequest struct {
 
 func (x *CountTrailerRequest) Reset() {
 	*x = CountTrailerRequest{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[20]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1003,7 +1355,7 @@ func (x *CountTrailerRequest) String() string {
 func (*CountTrailerRequest) ProtoMessage() {}
 
 func (x *CountTrailerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[20]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1016,7 +1368,7 @@ func (x *CountTrailerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountTrailerRequest.ProtoReflect.Descriptor instead.
 func (*CountTrailerRequest) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{20}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CountTrailerRequest) GetCount() int32 {
@@ -1035,7 +1387,7 @@ type CountTrailerResponse struct {
 
 func (x *CountTrailerResponse) Reset() {
 	*x = CountTrailerResponse{}
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[21]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1047,7 +1399,7 @@ func (x *CountTrailerResponse) String() string {
 func (*CountTrailerResponse) ProtoMessage() {}
 
 func (x *CountTrailerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[21]
+	mi := &file_easyrpc_conformance_v1_conformance_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1060,7 +1412,7 @@ func (x *CountTrailerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountTrailerResponse.ProtoReflect.Descriptor instead.
 func (*CountTrailerResponse) Descriptor() ([]byte, []int) {
-	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{21}
+	return file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *CountTrailerResponse) GetIndex() int32 {
@@ -1090,7 +1442,23 @@ const file_easyrpc_conformance_v1_conformance_proto_rawDesc = "" +
 	"\rHealthRequest\"4\n" +
 	"\x0eHealthResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"b\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"&\n" +
+	"\x10EchoBytesRequest\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"'\n" +
+	"\x11EchoBytesResponse\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"&\n" +
+	"\fSleepRequest\x12\x16\n" +
+	"\x06millis\x18\x01 \x01(\x05R\x06millis\"\x1f\n" +
+	"\rSleepResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\x0e\n" +
+	"\fEmptyRequest\"\x0f\n" +
+	"\rEmptyResponse\"<\n" +
+	"\x10BigStreamRequest\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count\x12\x12\n" +
+	"\x04size\x18\x02 \x01(\x05R\x04size\"=\n" +
+	"\x11BigStreamResponse\x12\x14\n" +
+	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
+	"\x04size\x18\x02 \x01(\x05R\x04size\"b\n" +
 	"\x11StreamFailRequest\x12\x1f\n" +
 	"\vemit_before\x18\x01 \x01(\x05R\n" +
 	"emitBefore\x12\x12\n" +
@@ -1138,7 +1506,7 @@ const file_easyrpc_conformance_v1_conformance_proto_rawDesc = "" +
 	"\x13CountTrailerRequest\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\",\n" +
 	"\x14CountTrailerResponse\x12\x14\n" +
-	"\x05index\x18\x01 \x01(\x05R\x05index2\xba\b\n" +
+	"\x05index\x18\x01 \x01(\x05R\x05index2\xac\v\n" +
 	"\x12ConformanceService\x12W\n" +
 	"\x06Health\x12%.easyrpc.conformance.v1.HealthRequest\x1a&.easyrpc.conformance.v1.HealthResponse\x12Q\n" +
 	"\x04Echo\x12#.easyrpc.conformance.v1.EchoRequest\x1a$.easyrpc.conformance.v1.EchoResponse\x12V\n" +
@@ -1151,7 +1519,11 @@ const file_easyrpc_conformance_v1_conformance_proto_rawDesc = "" +
 	"\vFailDetails\x12*.easyrpc.conformance.v1.FailDetailsRequest\x1a+.easyrpc.conformance.v1.FailDetailsResponse\x12z\n" +
 	"\x11StreamFailDetails\x120.easyrpc.conformance.v1.StreamFailDetailsRequest\x1a1.easyrpc.conformance.v1.StreamFailDetailsResponse0\x01\x12f\n" +
 	"\vEchoTrailer\x12*.easyrpc.conformance.v1.EchoTrailerRequest\x1a+.easyrpc.conformance.v1.EchoTrailerResponse\x12k\n" +
-	"\fCountTrailer\x12+.easyrpc.conformance.v1.CountTrailerRequest\x1a,.easyrpc.conformance.v1.CountTrailerResponse0\x01B^\n" +
+	"\fCountTrailer\x12+.easyrpc.conformance.v1.CountTrailerRequest\x1a,.easyrpc.conformance.v1.CountTrailerResponse0\x01\x12`\n" +
+	"\tEchoBytes\x12(.easyrpc.conformance.v1.EchoBytesRequest\x1a).easyrpc.conformance.v1.EchoBytesResponse\x12T\n" +
+	"\x05Sleep\x12$.easyrpc.conformance.v1.SleepRequest\x1a%.easyrpc.conformance.v1.SleepResponse\x12T\n" +
+	"\x05Empty\x12$.easyrpc.conformance.v1.EmptyRequest\x1a%.easyrpc.conformance.v1.EmptyResponse\x12b\n" +
+	"\tBigStream\x12(.easyrpc.conformance.v1.BigStreamRequest\x1a).easyrpc.conformance.v1.BigStreamResponse0\x01B^\n" +
 	"\x1acom.easyrpc.conformance.v1P\x01Z>github.com/easy-utils/easy-rpc-go/conformance/v1;conformancev1b\x06proto3"
 
 var (
@@ -1166,7 +1538,7 @@ func file_easyrpc_conformance_v1_conformance_proto_rawDescGZIP() []byte {
 	return file_easyrpc_conformance_v1_conformance_proto_rawDescData
 }
 
-var file_easyrpc_conformance_v1_conformance_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_easyrpc_conformance_v1_conformance_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_easyrpc_conformance_v1_conformance_proto_goTypes = []any{
 	(*EchoRequest)(nil),               // 0: easyrpc.conformance.v1.EchoRequest
 	(*EchoResponse)(nil),              // 1: easyrpc.conformance.v1.EchoResponse
@@ -1176,48 +1548,64 @@ var file_easyrpc_conformance_v1_conformance_proto_goTypes = []any{
 	(*FailResponse)(nil),              // 5: easyrpc.conformance.v1.FailResponse
 	(*HealthRequest)(nil),             // 6: easyrpc.conformance.v1.HealthRequest
 	(*HealthResponse)(nil),            // 7: easyrpc.conformance.v1.HealthResponse
-	(*StreamFailRequest)(nil),         // 8: easyrpc.conformance.v1.StreamFailRequest
-	(*StreamFailResponse)(nil),        // 9: easyrpc.conformance.v1.StreamFailResponse
-	(*EchoMetaRequest)(nil),           // 10: easyrpc.conformance.v1.EchoMetaRequest
-	(*EchoMetaResponse)(nil),          // 11: easyrpc.conformance.v1.EchoMetaResponse
-	(*BigRequest)(nil),                // 12: easyrpc.conformance.v1.BigRequest
-	(*BigResponse)(nil),               // 13: easyrpc.conformance.v1.BigResponse
-	(*FailDetailsRequest)(nil),        // 14: easyrpc.conformance.v1.FailDetailsRequest
-	(*FailDetailsResponse)(nil),       // 15: easyrpc.conformance.v1.FailDetailsResponse
-	(*StreamFailDetailsRequest)(nil),  // 16: easyrpc.conformance.v1.StreamFailDetailsRequest
-	(*StreamFailDetailsResponse)(nil), // 17: easyrpc.conformance.v1.StreamFailDetailsResponse
-	(*EchoTrailerRequest)(nil),        // 18: easyrpc.conformance.v1.EchoTrailerRequest
-	(*EchoTrailerResponse)(nil),       // 19: easyrpc.conformance.v1.EchoTrailerResponse
-	(*CountTrailerRequest)(nil),       // 20: easyrpc.conformance.v1.CountTrailerRequest
-	(*CountTrailerResponse)(nil),      // 21: easyrpc.conformance.v1.CountTrailerResponse
-	nil,                               // 22: easyrpc.conformance.v1.EchoMetaResponse.MetaEntry
+	(*EchoBytesRequest)(nil),          // 8: easyrpc.conformance.v1.EchoBytesRequest
+	(*EchoBytesResponse)(nil),         // 9: easyrpc.conformance.v1.EchoBytesResponse
+	(*SleepRequest)(nil),              // 10: easyrpc.conformance.v1.SleepRequest
+	(*SleepResponse)(nil),             // 11: easyrpc.conformance.v1.SleepResponse
+	(*EmptyRequest)(nil),              // 12: easyrpc.conformance.v1.EmptyRequest
+	(*EmptyResponse)(nil),             // 13: easyrpc.conformance.v1.EmptyResponse
+	(*BigStreamRequest)(nil),          // 14: easyrpc.conformance.v1.BigStreamRequest
+	(*BigStreamResponse)(nil),         // 15: easyrpc.conformance.v1.BigStreamResponse
+	(*StreamFailRequest)(nil),         // 16: easyrpc.conformance.v1.StreamFailRequest
+	(*StreamFailResponse)(nil),        // 17: easyrpc.conformance.v1.StreamFailResponse
+	(*EchoMetaRequest)(nil),           // 18: easyrpc.conformance.v1.EchoMetaRequest
+	(*EchoMetaResponse)(nil),          // 19: easyrpc.conformance.v1.EchoMetaResponse
+	(*BigRequest)(nil),                // 20: easyrpc.conformance.v1.BigRequest
+	(*BigResponse)(nil),               // 21: easyrpc.conformance.v1.BigResponse
+	(*FailDetailsRequest)(nil),        // 22: easyrpc.conformance.v1.FailDetailsRequest
+	(*FailDetailsResponse)(nil),       // 23: easyrpc.conformance.v1.FailDetailsResponse
+	(*StreamFailDetailsRequest)(nil),  // 24: easyrpc.conformance.v1.StreamFailDetailsRequest
+	(*StreamFailDetailsResponse)(nil), // 25: easyrpc.conformance.v1.StreamFailDetailsResponse
+	(*EchoTrailerRequest)(nil),        // 26: easyrpc.conformance.v1.EchoTrailerRequest
+	(*EchoTrailerResponse)(nil),       // 27: easyrpc.conformance.v1.EchoTrailerResponse
+	(*CountTrailerRequest)(nil),       // 28: easyrpc.conformance.v1.CountTrailerRequest
+	(*CountTrailerResponse)(nil),      // 29: easyrpc.conformance.v1.CountTrailerResponse
+	nil,                               // 30: easyrpc.conformance.v1.EchoMetaResponse.MetaEntry
 }
 var file_easyrpc_conformance_v1_conformance_proto_depIdxs = []int32{
-	22, // 0: easyrpc.conformance.v1.EchoMetaResponse.meta:type_name -> easyrpc.conformance.v1.EchoMetaResponse.MetaEntry
+	30, // 0: easyrpc.conformance.v1.EchoMetaResponse.meta:type_name -> easyrpc.conformance.v1.EchoMetaResponse.MetaEntry
 	6,  // 1: easyrpc.conformance.v1.ConformanceService.Health:input_type -> easyrpc.conformance.v1.HealthRequest
 	0,  // 2: easyrpc.conformance.v1.ConformanceService.Echo:input_type -> easyrpc.conformance.v1.EchoRequest
 	2,  // 3: easyrpc.conformance.v1.ConformanceService.Count:input_type -> easyrpc.conformance.v1.CountRequest
 	4,  // 4: easyrpc.conformance.v1.ConformanceService.Fail:input_type -> easyrpc.conformance.v1.FailRequest
-	8,  // 5: easyrpc.conformance.v1.ConformanceService.StreamFail:input_type -> easyrpc.conformance.v1.StreamFailRequest
-	10, // 6: easyrpc.conformance.v1.ConformanceService.EchoMeta:input_type -> easyrpc.conformance.v1.EchoMetaRequest
-	12, // 7: easyrpc.conformance.v1.ConformanceService.Big:input_type -> easyrpc.conformance.v1.BigRequest
-	14, // 8: easyrpc.conformance.v1.ConformanceService.FailDetails:input_type -> easyrpc.conformance.v1.FailDetailsRequest
-	16, // 9: easyrpc.conformance.v1.ConformanceService.StreamFailDetails:input_type -> easyrpc.conformance.v1.StreamFailDetailsRequest
-	18, // 10: easyrpc.conformance.v1.ConformanceService.EchoTrailer:input_type -> easyrpc.conformance.v1.EchoTrailerRequest
-	20, // 11: easyrpc.conformance.v1.ConformanceService.CountTrailer:input_type -> easyrpc.conformance.v1.CountTrailerRequest
-	7,  // 12: easyrpc.conformance.v1.ConformanceService.Health:output_type -> easyrpc.conformance.v1.HealthResponse
-	1,  // 13: easyrpc.conformance.v1.ConformanceService.Echo:output_type -> easyrpc.conformance.v1.EchoResponse
-	3,  // 14: easyrpc.conformance.v1.ConformanceService.Count:output_type -> easyrpc.conformance.v1.CountResponse
-	5,  // 15: easyrpc.conformance.v1.ConformanceService.Fail:output_type -> easyrpc.conformance.v1.FailResponse
-	9,  // 16: easyrpc.conformance.v1.ConformanceService.StreamFail:output_type -> easyrpc.conformance.v1.StreamFailResponse
-	11, // 17: easyrpc.conformance.v1.ConformanceService.EchoMeta:output_type -> easyrpc.conformance.v1.EchoMetaResponse
-	13, // 18: easyrpc.conformance.v1.ConformanceService.Big:output_type -> easyrpc.conformance.v1.BigResponse
-	15, // 19: easyrpc.conformance.v1.ConformanceService.FailDetails:output_type -> easyrpc.conformance.v1.FailDetailsResponse
-	17, // 20: easyrpc.conformance.v1.ConformanceService.StreamFailDetails:output_type -> easyrpc.conformance.v1.StreamFailDetailsResponse
-	19, // 21: easyrpc.conformance.v1.ConformanceService.EchoTrailer:output_type -> easyrpc.conformance.v1.EchoTrailerResponse
-	21, // 22: easyrpc.conformance.v1.ConformanceService.CountTrailer:output_type -> easyrpc.conformance.v1.CountTrailerResponse
-	12, // [12:23] is the sub-list for method output_type
-	1,  // [1:12] is the sub-list for method input_type
+	16, // 5: easyrpc.conformance.v1.ConformanceService.StreamFail:input_type -> easyrpc.conformance.v1.StreamFailRequest
+	18, // 6: easyrpc.conformance.v1.ConformanceService.EchoMeta:input_type -> easyrpc.conformance.v1.EchoMetaRequest
+	20, // 7: easyrpc.conformance.v1.ConformanceService.Big:input_type -> easyrpc.conformance.v1.BigRequest
+	22, // 8: easyrpc.conformance.v1.ConformanceService.FailDetails:input_type -> easyrpc.conformance.v1.FailDetailsRequest
+	24, // 9: easyrpc.conformance.v1.ConformanceService.StreamFailDetails:input_type -> easyrpc.conformance.v1.StreamFailDetailsRequest
+	26, // 10: easyrpc.conformance.v1.ConformanceService.EchoTrailer:input_type -> easyrpc.conformance.v1.EchoTrailerRequest
+	28, // 11: easyrpc.conformance.v1.ConformanceService.CountTrailer:input_type -> easyrpc.conformance.v1.CountTrailerRequest
+	8,  // 12: easyrpc.conformance.v1.ConformanceService.EchoBytes:input_type -> easyrpc.conformance.v1.EchoBytesRequest
+	10, // 13: easyrpc.conformance.v1.ConformanceService.Sleep:input_type -> easyrpc.conformance.v1.SleepRequest
+	12, // 14: easyrpc.conformance.v1.ConformanceService.Empty:input_type -> easyrpc.conformance.v1.EmptyRequest
+	14, // 15: easyrpc.conformance.v1.ConformanceService.BigStream:input_type -> easyrpc.conformance.v1.BigStreamRequest
+	7,  // 16: easyrpc.conformance.v1.ConformanceService.Health:output_type -> easyrpc.conformance.v1.HealthResponse
+	1,  // 17: easyrpc.conformance.v1.ConformanceService.Echo:output_type -> easyrpc.conformance.v1.EchoResponse
+	3,  // 18: easyrpc.conformance.v1.ConformanceService.Count:output_type -> easyrpc.conformance.v1.CountResponse
+	5,  // 19: easyrpc.conformance.v1.ConformanceService.Fail:output_type -> easyrpc.conformance.v1.FailResponse
+	17, // 20: easyrpc.conformance.v1.ConformanceService.StreamFail:output_type -> easyrpc.conformance.v1.StreamFailResponse
+	19, // 21: easyrpc.conformance.v1.ConformanceService.EchoMeta:output_type -> easyrpc.conformance.v1.EchoMetaResponse
+	21, // 22: easyrpc.conformance.v1.ConformanceService.Big:output_type -> easyrpc.conformance.v1.BigResponse
+	23, // 23: easyrpc.conformance.v1.ConformanceService.FailDetails:output_type -> easyrpc.conformance.v1.FailDetailsResponse
+	25, // 24: easyrpc.conformance.v1.ConformanceService.StreamFailDetails:output_type -> easyrpc.conformance.v1.StreamFailDetailsResponse
+	27, // 25: easyrpc.conformance.v1.ConformanceService.EchoTrailer:output_type -> easyrpc.conformance.v1.EchoTrailerResponse
+	29, // 26: easyrpc.conformance.v1.ConformanceService.CountTrailer:output_type -> easyrpc.conformance.v1.CountTrailerResponse
+	9,  // 27: easyrpc.conformance.v1.ConformanceService.EchoBytes:output_type -> easyrpc.conformance.v1.EchoBytesResponse
+	11, // 28: easyrpc.conformance.v1.ConformanceService.Sleep:output_type -> easyrpc.conformance.v1.SleepResponse
+	13, // 29: easyrpc.conformance.v1.ConformanceService.Empty:output_type -> easyrpc.conformance.v1.EmptyResponse
+	15, // 30: easyrpc.conformance.v1.ConformanceService.BigStream:output_type -> easyrpc.conformance.v1.BigStreamResponse
+	16, // [16:31] is the sub-list for method output_type
+	1,  // [1:16] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -1234,7 +1622,7 @@ func file_easyrpc_conformance_v1_conformance_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_easyrpc_conformance_v1_conformance_proto_rawDesc), len(file_easyrpc_conformance_v1_conformance_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

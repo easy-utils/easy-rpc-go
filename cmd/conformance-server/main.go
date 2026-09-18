@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 
 	easyrpc "github.com/easy-utils/easy-rpc-go"
 	cv1 "github.com/easy-utils/easy-rpc-go/easyrpc/conformance/v1"
@@ -64,6 +65,40 @@ func (impl) EchoMeta(c context.Context, in *cv1.EchoMetaRequest) (*cv1.EchoMetaR
 // Big returns a response whose serialized size is >= in.Size bytes.
 func (impl) Big(c context.Context, in *cv1.BigRequest) (*cv1.BigResponse, error) {
 	return &cv1.BigResponse{Size: in.Size}, nil
+}
+
+// EchoBytes round-trips arbitrary bytes (non-UTF-8).
+func (impl) EchoBytes(c context.Context, in *cv1.EchoBytesRequest) (*cv1.EchoBytesResponse, error) {
+	return &cv1.EchoBytesResponse{Data: in.Data}, nil
+}
+
+// Sleep blocks `millis`; exercises the Connect deadline (M12/M13).
+func (impl) Sleep(c context.Context, in *cv1.SleepRequest) (*cv1.SleepResponse, error) {
+	select {
+	case <-time.After(time.Duration(in.Millis) * time.Millisecond):
+	case <-c.Done():
+		return nil, &easyrpc.RPCError{Code: 4, Message: "deadline exceeded"}
+	}
+	return &cv1.SleepResponse{Ok: true}, nil
+}
+
+// Empty returns an empty message.
+func (impl) Empty(c context.Context, in *cv1.EmptyRequest) (*cv1.EmptyResponse, error) {
+	return &cv1.EmptyResponse{}, nil
+}
+
+// BigStream emits `count` frames declaring `size` bytes each.
+func (impl) BigStream(c context.Context, in *cv1.BigStreamRequest, emit func(*cv1.BigStreamResponse) error) error {
+	n := in.Count
+	if n <= 0 {
+		n = 3
+	}
+	for i := int32(0); i < n; i++ {
+		if err := emit(&cv1.BigStreamResponse{Index: i, Size: in.Size}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FailDetails fails the unary call with an error carrying structured details
