@@ -4,6 +4,7 @@ package conformancev1
 import (
 	easyrpc "github.com/easy-utils/easy-rpc-go"
 	"context"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -30,114 +31,144 @@ func ConformanceService_Methods() []easyrpc.MethodSpec {
 type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
-func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest) (*HealthResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Health", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Health(ctx context.Context, in *HealthRequest, opts ...easyrpc.CallOption) (*HealthResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Health", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &HealthResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest) (*EchoResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Echo", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Echo(ctx context.Context, in *EchoRequest, opts ...easyrpc.CallOption) (*EchoResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Echo", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Count", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) Count(ctx context.Context, in *CountRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Count", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest) (*FailResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Fail", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Fail(ctx context.Context, in *FailRequest, opts ...easyrpc.CallOption) (*FailResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Fail", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &FailResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) StreamFail(ctx context.Context, in *StreamFailRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFail", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) StreamFail(ctx context.Context, in *StreamFailRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFail", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) EchoMeta(ctx context.Context, in *EchoMetaRequest) (*EchoMetaResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoMeta", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) EchoMeta(ctx context.Context, in *EchoMetaRequest, opts ...easyrpc.CallOption) (*EchoMetaResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoMeta", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoMetaResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) Big(ctx context.Context, in *BigRequest) (*BigResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Big", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Big(ctx context.Context, in *BigRequest, opts ...easyrpc.CallOption) (*BigResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Big", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &BigResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) FailDetails(ctx context.Context, in *FailDetailsRequest) (*FailDetailsResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/FailDetails", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) FailDetails(ctx context.Context, in *FailDetailsRequest, opts ...easyrpc.CallOption) (*FailDetailsResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/FailDetails", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &FailDetailsResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFailDetails", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) StreamFailDetails(ctx context.Context, in *StreamFailDetailsRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/StreamFailDetails", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) EchoTrailer(ctx context.Context, in *EchoTrailerRequest) (*EchoTrailerResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoTrailer", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) EchoTrailer(ctx context.Context, in *EchoTrailerRequest, opts ...easyrpc.CallOption) (*EchoTrailerResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoTrailer", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoTrailerResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) CountTrailer(ctx context.Context, in *CountTrailerRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/CountTrailer", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) CountTrailer(ctx context.Context, in *CountTrailerRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/CountTrailer", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) EchoBytes(ctx context.Context, in *EchoBytesRequest) (*EchoBytesResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoBytes", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) EchoBytes(ctx context.Context, in *EchoBytesRequest, opts ...easyrpc.CallOption) (*EchoBytesResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/EchoBytes", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &EchoBytesResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) Sleep(ctx context.Context, in *SleepRequest) (*SleepResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Sleep", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Sleep(ctx context.Context, in *SleepRequest, opts ...easyrpc.CallOption) (*SleepResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Sleep", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &SleepResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) Empty(ctx context.Context, in *EmptyRequest) (*EmptyResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Empty", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Empty(ctx context.Context, in *EmptyRequest, opts ...easyrpc.CallOption) (*EmptyResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/Empty", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &EmptyResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) BigStream(ctx context.Context, in *BigStreamRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/BigStream", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) BigStream(ctx context.Context, in *BigStreamRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/easyrpc.conformance.v1.ConformanceService/BigStream", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
 type ConformanceServiceService interface {
@@ -162,98 +193,113 @@ func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.
 	reg := easyrpc.NewServiceRegistry()
 	reg.Unary["Health"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &HealthRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Health(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["Echo"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Echo(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["Count"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &CountRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.Count(ctx, in, func(out *CountResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.Count(ctx, in, func(out *CountResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["Fail"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &FailRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Fail(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["StreamFail"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &StreamFailRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.StreamFail(ctx, in, func(out *StreamFailResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.StreamFail(ctx, in, func(out *StreamFailResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["EchoMeta"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoMetaRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.EchoMeta(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["Big"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &BigRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Big(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["FailDetails"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &FailDetailsRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.FailDetails(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["StreamFailDetails"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &StreamFailDetailsRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.StreamFailDetails(ctx, in, func(out *StreamFailDetailsResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.StreamFailDetails(ctx, in, func(out *StreamFailDetailsResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["EchoTrailer"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoTrailerRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.EchoTrailer(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["CountTrailer"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &CountTrailerRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.CountTrailer(ctx, in, func(out *CountTrailerResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.CountTrailer(ctx, in, func(out *CountTrailerResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["EchoBytes"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EchoBytesRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.EchoBytes(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["Sleep"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &SleepRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Sleep(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["Empty"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &EmptyRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Empty(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["BigStream"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &BigStreamRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.BigStream(ctx, in, func(out *BigStreamResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.BigStream(ctx, in, func(out *BigStreamResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	return reg
 }
@@ -263,3 +309,20 @@ func protoBytes(m proto.Message) []byte {
 	return b
 }
 
+func encodeMsg(m proto.Message, kind easyrpc.ContentKind) []byte {
+	if kind == easyrpc.KindJSON {
+		b, err := protojson.Marshal(m)
+		if err != nil {
+			return []byte("{}")
+		}
+		return b
+	}
+	return protoBytes(m)
+}
+
+func decodeMsg(b []byte, m proto.Message, kind easyrpc.ContentKind) error {
+	if kind == easyrpc.KindJSON {
+		return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(b, m)
+	}
+	return proto.Unmarshal(b, m)
+}

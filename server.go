@@ -79,13 +79,12 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 		return writeErrorStatus(w, &RPCError{Code: 12, Message: "unimplemented"}, 404)
 	}
 
-	// proto-only content type check (spec §2).
-	wantCT := ContentTypeUnary
-	if spec.ServerStream {
-		wantCT = ContentTypeStream
-	}
-	gotCT := strings.TrimSpace(strings.ToLower(strings.SplitN(req.Headers.Get("Content-Type"), ";", 2)[0]))
-	if gotCT != wantCT {
+	// codec + shape negotiation (spec §2): proto (default) or proto3 JSON; the
+	// content type also encodes the shape, which must match the method.
+	gotCT := req.Headers.Get("Content-Type")
+	kind := ContentKindOf(gotCT)
+	streamShape := IsStreamContentType(gotCT)
+	if kind == "" || streamShape != spec.ServerStream {
 		return writeErrorStatus(w, &RPCError{Code: 2, Message: "unsupported content-type: " + gotCT}, 415)
 	}
 	// Request compression: unary uses `Content-Encoding`, server-stream uses
@@ -103,6 +102,7 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 
 	// Per-RPC metadata + trailer channel.
 	hc := NewHandlerContext(req.Headers)
+	hc.Kind = kind
 	ctx = ContextWithHeaders(ctx, req.Headers)
 	ctx = ContextWithHandlerContext(ctx, hc)
 
@@ -154,7 +154,7 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 				return
 			}
 			headersApplied = true
-			w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeStream}}, hc.ResponseHeaders()))
+			w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeFor(true, kind)}}, hc.ResponseHeaders()))
 		}
 		emit := func(p []byte, end bool) error {
 			if ended {
@@ -212,13 +212,13 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 	// Unary gzip (spec §3.5): compress when the client accepts gzip.
 	if acceptsGzip(req.Headers[HeaderAcceptEncoding]) && len(resp) >= CompressMinBytes {
 		if z, zerr := GzipCompress(resp); zerr == nil {
-			w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeUnary}, "Content-Encoding": []string{EncodingGzip}}, hc.ResponseHeaders()), hc.Trailers()))
+			w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeFor(false, kind)}, "Content-Encoding": []string{EncodingGzip}}, hc.ResponseHeaders()), hc.Trailers()))
 			w.Status(200)
 			return w.WriteFrame(z)
 		}
 	}
 	w.Status(200)
-	w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeUnary}}, hc.ResponseHeaders()), hc.Trailers()))
+	w.Header(MuxTrailers(mergeHeaders(Headers{"Content-Type": []string{ContentTypeFor(false, kind)}}, hc.ResponseHeaders()), hc.Trailers()))
 	return w.WriteFrame(resp)
 }
 
@@ -254,7 +254,7 @@ func countFrames(body []byte) (int, *RPCError) {
 // streamFail emits a server-stream failure as HTTP 200 + an END-frame error.
 func streamFail(w ResponseWriter, err *RPCError, hc *HandlerContext) error {
 	w.Status(200)
-	w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeStream}}, hc.ResponseHeaders()))
+	w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeFor(true, hc.Kind)}}, hc.ResponseHeaders()))
 	return w.WriteFrame(Frame(EncodeEndStream(EndStreamMessage{Code: err.Code, Message: err.Message, Details: err.Details, Metadata: hc.Trailers()}), true))
 }
 

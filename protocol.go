@@ -722,19 +722,63 @@ func DemuxTrailers(all Headers) (Headers, Headers) {
 	return h, t
 }
 
+// ContentKind is the message codec: proto binary (default) or proto3 JSON.
+type ContentKind string
+
+const (
+	KindProto ContentKind = "proto"
+	KindJSON  ContentKind = "json"
+)
+
+// ContentKindOf maps a Content-Type to a codec, or "" when unsupported.
+func ContentKindOf(contentType string) ContentKind {
+	ct := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	switch ct {
+	case "application/proto", "application/connect+proto":
+		return KindProto
+	case "application/json", "application/connect+json":
+		return KindJSON
+	}
+	return ""
+}
+
+// IsStreamContentType reports whether the content type denotes the streaming
+// shape (application/connect+proto|json).
+func IsStreamContentType(contentType string) bool {
+	ct := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	return ct == "application/connect+proto" || ct == "application/connect+json"
+}
+
+// ContentTypeFor returns the response Content-Type for a shape + codec.
+func ContentTypeFor(serverStream bool, kind ContentKind) string {
+	if kind == KindJSON {
+		if serverStream {
+			return "application/connect+json"
+		}
+		return "application/json"
+	}
+	if serverStream {
+		return ContentTypeStream
+	}
+	return ContentTypeUnary
+}
+
 // HandlerContext is passed to generated unary/stream handlers. It exposes
 // request metadata and a channel to set trailing metadata. It travels inside
 // the handler's context (see HandlerContextFromContext), so the generated
 // service interface keeps its plain (ctx, in) signature.
 type HandlerContext struct {
 	Headers Headers
+	// Kind is the message codec the request arrived with; generated handlers
+	// decode the request and encode the response accordingly.
+	Kind    ContentKind
 	header  Headers
 	trailer Headers
 }
 
 // NewHandlerContext builds a context carrying request metadata.
 func NewHandlerContext(headers Headers) *HandlerContext {
-	return &HandlerContext{Headers: headers, header: Headers{}, trailer: Headers{}}
+	return &HandlerContext{Headers: headers, Kind: KindProto, header: Headers{}, trailer: Headers{}}
 }
 
 // SetHeader records a response header (non-trailer). Emitted on both unary and
@@ -808,3 +852,11 @@ func connectFromStatus(status int) int { return ConnectFromStatus(status) }
 
 // statusFromHeader is the internal alias kept for existing callers.
 func statusFromHeader(h Headers) *RPCError { return StatusFromHeader(h) }
+
+// CallOption adjusts a client call's codec (and future options).
+type CallOption func(*ContentKind)
+
+// WithKind selects the message codec for a call (default proto).
+func WithKind(kind ContentKind) CallOption {
+	return func(k *ContentKind) { *k = kind }
+}
