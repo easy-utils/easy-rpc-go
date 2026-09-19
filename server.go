@@ -154,7 +154,13 @@ func Dispatch(ctx context.Context, req Request, methods []MethodSpec, reg *Servi
 				return
 			}
 			headersApplied = true
-			w.Header(mergeHeaders(Headers{"Content-Type": []string{ContentTypeFor(true, kind)}}, hc.ResponseHeaders()))
+			base := Headers{"Content-Type": []string{ContentTypeFor(true, kind)}}
+			// Advertise negotiated frame compression (Connect-Content-Encoding)
+			// so a Connect client builds a decompression pool.
+			if wantsGzip {
+				base["Connect-Content-Encoding"] = []string{EncodingGzip}
+			}
+			w.Header(mergeHeaders(base, hc.ResponseHeaders()))
 		}
 		emit := func(p []byte, end bool) error {
 			if ended {

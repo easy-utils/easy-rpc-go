@@ -4,6 +4,7 @@ package v1
 import (
 	easyrpc "github.com/easy-utils/easy-rpc-go"
 	"context"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,47 +22,59 @@ func ConformanceService_Methods() []easyrpc.MethodSpec {
 type ConformanceServiceClient struct { rt easyrpc.Transport }
 func NewConformanceServiceClient(rt easyrpc.Transport) *ConformanceServiceClient { return &ConformanceServiceClient{rt: rt} }
 
-func (c *ConformanceServiceClient) Unary(ctx context.Context, in *UnaryRequest) (*UnaryResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/Unary", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Unary(ctx context.Context, in *UnaryRequest, opts ...easyrpc.CallOption) (*UnaryResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/Unary", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &UnaryResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) ServerStream(ctx context.Context, in *ServerStreamRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/ServerStream", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) ServerStream(ctx context.Context, in *ServerStreamRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/ServerStream", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) ClientStream(ctx context.Context, in *ClientStreamRequest) (*ClientStreamResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/ClientStream", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) ClientStream(ctx context.Context, in *ClientStreamRequest, opts ...easyrpc.CallOption) (*ClientStreamResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/ClientStream", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &ClientStreamResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) BidiStream(ctx context.Context, in *BidiStreamRequest) (easyrpc.Stream, error) {
-	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/BidiStream", Body: easyrpc.Frame(protoBytes(in), false)})
+func (c *ConformanceServiceClient) BidiStream(ctx context.Context, in *BidiStreamRequest, opts ...easyrpc.CallOption) (easyrpc.Stream, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	return c.rt.OpenStream(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/BidiStream", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(true, kind)}}, Body: easyrpc.Frame(encodeMsg(in, kind), false)})
 }
 
-func (c *ConformanceServiceClient) Unimplemented(ctx context.Context, in *UnimplementedRequest) (*UnimplementedResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/Unimplemented", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) Unimplemented(ctx context.Context, in *UnimplementedRequest, opts ...easyrpc.CallOption) (*UnimplementedResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/Unimplemented", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &UnimplementedResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
-func (c *ConformanceServiceClient) IdempotentUnary(ctx context.Context, in *IdempotentUnaryRequest) (*IdempotentUnaryResponse, error) {
-	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/IdempotentUnary", Body: protoBytes(in)})
+func (c *ConformanceServiceClient) IdempotentUnary(ctx context.Context, in *IdempotentUnaryRequest, opts ...easyrpc.CallOption) (*IdempotentUnaryResponse, error) {
+	kind := easyrpc.KindProto
+	for _, o := range opts { o(&kind) }
+	resp, err := c.rt.Send(ctx, easyrpc.Request{URL: "/connectrpc.conformance.v1.ConformanceService/IdempotentUnary", Headers: easyrpc.Headers{"Content-Type": []string{easyrpc.ContentTypeFor(false, kind)}}, Body: encodeMsg(in, kind)})
 	if err != nil { return nil, err }
 	if resp.Error != nil { return nil, resp.Error }
 	out := &IdempotentUnaryResponse{}
-	if err := proto.Unmarshal(resp.Body, out); err != nil { return nil, err }
+	if err := decodeMsg(resp.Body, out, kind); err != nil { return nil, err }
 	return out, nil
 }
 
@@ -78,41 +91,47 @@ func RegisterConformanceServiceService(impl ConformanceServiceService) *easyrpc.
 	reg := easyrpc.NewServiceRegistry()
 	reg.Unary["Unary"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &UnaryRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Unary(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["ServerStream"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &ServerStreamRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.ServerStream(ctx, in, func(out *ServerStreamResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.ServerStream(ctx, in, func(out *ServerStreamResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["ClientStream"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &ClientStreamRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.ClientStream(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Stream["BidiStream"] = func(ctx context.Context, req []byte, emit func([]byte, bool) error) error {
 		in := &BidiStreamRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return err }
-		return impl.BidiStream(ctx, in, func(out *BidiStreamResponse) error { return emit(protoBytes(out), false) })
+		if err := decodeMsg(req, in, easyrpc.HandlerContextFromContext(ctx).Kind); err != nil { return err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		return impl.BidiStream(ctx, in, func(out *BidiStreamResponse) error { return emit(encodeMsg(out, kind), false) })
 	}
 	reg.Unary["Unimplemented"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &UnimplementedRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.Unimplemented(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	reg.Unary["IdempotentUnary"] = func(ctx context.Context, req []byte) ([]byte, error) {
 		in := &IdempotentUnaryRequest{}
-		if err := proto.Unmarshal(req, in); err != nil { return nil, err }
+		kind := easyrpc.HandlerContextFromContext(ctx).Kind
+		if err := decodeMsg(req, in, kind); err != nil { return nil, err }
 		out, err := impl.IdempotentUnary(ctx, in)
 		if err != nil { return nil, err }
-		return protoBytes(out), nil
+		return encodeMsg(out, kind), nil
 	}
 	return reg
 }
@@ -122,3 +141,20 @@ func protoBytes(m proto.Message) []byte {
 	return b
 }
 
+func encodeMsg(m proto.Message, kind easyrpc.ContentKind) []byte {
+	if kind == easyrpc.KindJSON {
+		b, err := protojson.Marshal(m)
+		if err != nil {
+			return []byte("{}")
+		}
+		return b
+	}
+	return protoBytes(m)
+}
+
+func decodeMsg(b []byte, m proto.Message, kind easyrpc.ContentKind) error {
+	if kind == easyrpc.KindJSON {
+		return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(b, m)
+	}
+	return proto.Unmarshal(b, m)
+}
